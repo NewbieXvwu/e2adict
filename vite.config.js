@@ -14,18 +14,18 @@ export default defineConfig({
       devOptions: { enabled: true },
 
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       },
 
       runtimeCaching: [
         {
-          urlPattern: /^https:\/\/.*\/dictionary\/.*\.json$/,
-          handler: 'StaleWhileRevalidate', // 先缓存+后台更新
+          urlPattern: /^https?:\/.*\/dictionary\/.*\.json$/,
+          handler: 'StaleWhileRevalidate',
           options: {
-            cacheName: 'dictionary-stale',
+            cacheName: 'dict-swr',
             plugins: [
               { cacheableResponse: { statuses: [200] } },
-              { expiration: { maxEntries: 50000, maxAgeSeconds: 30 * 24 * 60 * 60 } }
+              { expiration: { maxEntries: 1000, maxAgeSeconds: 30 * 24 * 60 * 60 } }
             ]
           }
         }
