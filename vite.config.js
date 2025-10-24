@@ -17,21 +17,52 @@ export default defineConfig({
     }),
     
     // 2. 添加 PWA 插件的配置
+
     VitePWA({
-      // registerType: 'autoUpdate' 表示 Service Worker 会自动更新，无需用户手动刷新
       registerType: 'autoUpdate',
-      
-      // devOptions 确保在开发环境 (pnpm dev) 中也能测试 PWA 功能
       devOptions: {
         enabled: true
       },
-      
-      // `workbox` 配置，决定了哪些文件会被缓存
+      // `workbox` 配置，决定了哪些文件会被预缓存
       workbox: {
-        // globPatterns 匹配所有需要被预缓存的文件
-        // 我们要确保所有的 dictionary json 文件都被包含进去
+        // globPatterns 保持不变，它负责在安装时缓存应用外壳和所有词典数据
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
       },
+
+      // [新增] `runtimeCaching` 配置，为动态请求制定缓存策略
+      runtimeCaching: [
+        {
+          // 匹配所有对 dictionary 文件夹下 json 文件的请求
+          urlPattern: /^https:\/\/.*\/dictionary\/.*\.json$/,
+          
+          // 使用 CacheFirst 策略：优先从缓存中读取。如果缓存中没有，再去网络请求，
+          // 请求成功后放入缓存，供下次使用。
+          handler: 'CacheFirst',
+          
+          options: {
+            // 设置这个缓存的名称
+            cacheName: 'dictionary-cache',
+            
+            // 配置插件
+            plugins: [
+              {
+                // 这个插件是关键：它告诉 Workbox 只缓存那些成功的请求 (status code 200)
+                // 任何 404 或其他错误请求都不会被缓存，也不会再抛出未捕获的异常
+                cacheableResponse: {
+                  statuses: [200]
+                }
+              },
+              {
+                // 设置缓存条目的最大数量和过期时间
+                expiration: {
+                  maxEntries: 50000, // 缓存最多 50000 个词条
+                  maxAgeSeconds: 30 * 24 * 60 * 60 // 缓存 30 天
+                }
+              }
+            ]
+          }
+        }
+      ],
 
       // `manifest` 配置，用于生成 manifest.json 文件
       // 这个文件描述了你的应用信息，比如名称、图标、主题色等
