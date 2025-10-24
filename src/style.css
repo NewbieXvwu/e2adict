@@ -6,6 +6,8 @@
 @tailwind utilities;
 
 /* 2. 定义我们的全局颜色变量和字体变量 */
+
+/* 深色主题 (默认) */
 :root {
   /* Material You Dark Theme Colors */
   --color-primary: #a8c7fa;
@@ -25,6 +27,27 @@
   /* Font Variable */
   --font-sans: 'Noto Sans SC', sans-serif;
 }
+
+/* 浅色主题 (当设备设置为浅色模式时自动应用) */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Material You Light Theme Colors (示例值) */
+    --color-primary: #0b57d0;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #d8e2ff;
+    --color-on-primary-container: #001945;
+    --color-surface-container: #eff1f6;
+    --color-surface-container-high: #e9ecf1;
+    --color-surface-container-highest: #e3e6eb;
+    --color-on-surface: #191c1e;
+    --color-on-surface-variant: #42474e;
+    --color-outline: #73777f;
+    --color-background: #f8f9fc;
+    --color-on-background: #191c1e;
+    --color-error: #b3261e;
+  }
+}
+
 
 /* 3. 使用 color-mix 创建派生样式的示例 (可选) */
 @layer utilities {
