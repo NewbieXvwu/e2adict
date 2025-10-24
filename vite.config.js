@@ -5,6 +5,7 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { VitePWA } from 'vite-plugin-pwa'; // 1. 引入 PWA 插件
 
 export default defineConfig({
+  publicDir: 'public', 
   plugins: [
     viteStaticCopy({
       targets: [
