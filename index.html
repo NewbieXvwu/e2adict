@@ -1,116 +1,102 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Open E→C Dictionary</title>
+<head>
+  <!-- 1. 内联主题策略：消灭 light 模式白屏闪 -->
+  <script>
+    (function(){
+      const m=matchMedia('(prefers-color-scheme: light)').matches;
+      document.documentElement.className = m ? 'light' : 'dark';
+    })();
+  </script>
 
-    <!-- PWA and Mobile meta tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Open Dict">
-    <meta name="theme-color" content="#111315">
-    <link rel="apple-touch-icon" href="/pwa-192x192.png">
-    <link rel="manifest" href="/manifest.webmanifest"> <!-- 这个文件会由 vite-plugin-pwa 自动生成 -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Open E→C Dictionary</title>
 
-    <!-- 1. 替换为国内镜像源，并保留 preconnect 以优化加载速度 -->
-    <link rel="preconnect" href="https://fonts.font.im" crossorigin>
-    <link href="https://fonts.font.im/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <!-- 2. 引入我们的主 JS 文件，Vite 会自动处理 CSS 的加载 -->
-    <script type="module" src="/src/main.js" defer></script>
-  </head>
-  
-  <!-- 3. 应用基础样式和自定义字体 -->
-  <body class="min-h-screen bg-background text-on-background font-sans">
-    
-    <div class="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-4 py-12">
-      <!-- Header 部分已移除 sticky 定位相关的类 -->
-      <header
-        class="flex flex-col gap-4 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left"
-      >
-        <div class="space-y-3">
-          <h1 class="text-3xl font-medium tracking-tight text-on-surface sm:text-4xl">
-            Open English → Chinese Dictionary
-          </h1>
+  <!-- PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Open Dict">
+  <meta name="theme-color" content="#111315">
+  <link rel="apple-touch-icon" href="/pwa-192x192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+
+  <!-- 字体 -->
+  <link rel="preconnect" href="https://fonts.font.im" crossorigin>
+  <link href="https://fonts.font.im/css2?family=Noto+Sans+SC:wght@400;500;700&display=optional" rel="stylesheet">
+
+  <!-- 主入口 -->
+  <script type="module" src="/src/main.js" defer></script>
+</head>
+
+<body class="min-h-screen bg-background text-on-background font-sans">
+  <div class="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-4 py-12">
+    <header class="flex flex-col gap-4 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+      <div class="space-y-3">
+        <h1 class="text-3xl font-medium tracking-tight text-on-surface sm:text-4xl">
+          Open English → Chinese Dictionary
+        </h1>
+      </div>
+    </header>
+
+    <main class="flex flex-col gap-6">
+      <section class="rounded-3xl bg-surface-container p-6 shadow-soft">
+        <form id="searchForm" class="space-y-4">
+          <div class="relative">
+            <label for="searchInput"
+              class="absolute -top-2 left-3 bg-surface-container px-1 text-xs font-medium uppercase tracking-wider text-on-surface-variant">
+              搜索单词
+            </label>
+            <input
+              id="searchInput"
+              type="search"
+              name="word"
+              placeholder="例如：ability"
+              autocomplete="off"
+              minlength="1"
+              enterkeyhint="search"
+              class="w-full rounded-lg border-2 border-transparent bg-surface-container-high px-4 py-3 text-lg text-on-surface outline-none transition-colors duration-200 focus:border-primary focus:bg-surface-container-highest"
+            />
+          </div>
+        </form>
+        <div id="statusMessage" class="mt-4 text-sm text-on-surface-variant" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="rounded-3xl bg-surface-container p-6 shadow-soft">
+        <h2 class="text-lg font-semibold text-on-surface">词条详情</h2>
+        <div id="entryView" class="prose dark:prose-invert mt-2 max-w-none prose-p:text-on-surface-variant prose-h3:text-on-surface prose-h4:text-primary">
+          <p>输入单词并按回车键进行搜索。</p>
         </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 模板 -->
+  <template id="entryTemplate">
+    <article class="space-y-8">
+      <header class="space-y-2">
+        <div class="flex flex-wrap items-baseline gap-3">
+          <h3 data-field="word" class="text-3xl font-semibold tracking-tight"></h3>
+          <span data-field="pronunciation" class="rounded-full bg-surface-container-high px-3 py-1 text-sm uppercase tracking-wide text-on-surface-variant"></span>
+        </div>
+        <p data-field="concise_definition" class="text-base"></p>
       </header>
 
-      <main class="flex flex-col gap-6">
-        <section
-          class="rounded-3xl bg-surface-container p-6 shadow-soft"
-        >
-          <form id="searchForm" class="space-y-4">
-            <div class="relative">
-              <label
-                for="searchInput"
-                class="absolute -top-2 left-3 bg-surface-container px-1 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
-                >搜索单词</label
-              >
-              <input
-                id="searchInput"
-                type="search"
-                name="word"
-                placeholder="例如：ability"
-                autocomplete="off"
-                class="w-full rounded-lg border-2 border-transparent bg-surface-container-high px-4 py-3 text-lg text-on-surface outline-none transition-colors duration-200 focus:border-primary focus:bg-surface-container-highest"
-              />
-            </div>
-          </form>
-          <div
-            id="statusMessage"
-            class="mt-4 text-sm text-on-surface-variant"
-            role="status"
-            aria-live="polite"
-          ></div>
-        </section>
+      <section class="space-y-3">
+        <h4>词形变化</h4>
+        <dl data-field="forms" class="grid gap-3 rounded-2xl bg-surface-container-high p-4 sm:grid-cols-2"></dl>
+      </section>
 
-        <section
-          class="rounded-3xl bg-surface-container p-6 shadow-soft"
-        >
-          <h2 class="text-lg font-semibold text-on-surface">词条详情</h2>
-          <!-- 关键改动：使用 dark:prose-invert 来适应暗色模式 -->
-          <div id="entryView" class="prose dark:prose-invert mt-2 max-w-none prose-p:text-on-surface-variant prose-h3:text-on-surface prose-h4:text-primary">
-            <!-- 初始提示信息 -->
-            <p>输入单词并按回车键进行搜索。</p> 
-          </div>
-        </section>
-      </main>
-    </div>
+      <section class="space-y-3">
+        <h4>详细释义</h4>
+        <div data-field="definitions" class="space-y-4"></div>
+      </section>
 
-    <!-- 你的 Template 模板，保持不变 -->
-    <template id="entryTemplate">
-      <article class="space-y-8">
-        <header class="space-y-2">
-          <div class="flex flex-wrap items-baseline gap-3">
-            <h3 data-field="word" class="text-3xl font-semibold tracking-tight"></h3>
-            <span
-              data-field="pronunciation"
-              class="rounded-full bg-surface-container-high px-3 py-1 text-sm uppercase tracking-wide text-on-surface-variant"
-            ></span>
-          </div>
-          <p data-field="concise_definition" class="text-base"></p>
-        </header>
-
-        <section class="space-y-3">
-          <h4>词形变化</h4>
-          <dl
-            data-field="forms"
-            class="grid gap-3 rounded-2xl bg-surface-container-high p-4 sm:grid-cols-2"
-          ></dl>
-        </section>
-
-        <section class="space-y-3">
-          <h4>详细释义</h4>
-          <div data-field="definitions" class="space-y-4"></div>
-        </section>
-
-        <section class="space-y-3">
-          <h4>近义词比较</h4>
-          <div data-field="comparison" class="space-y-3"></div>
-        </section>
-      </article>
-    </template>
-
-  </body>
+      <section class="space-y-3">
+        <h4>近义词比较</h4>
+        <div data-field="comparison" class="space-y-3"></div>
+      </section>
+    </article>
+  </template>
+</body>
 </html>
