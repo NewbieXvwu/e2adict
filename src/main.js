@@ -61,27 +61,34 @@ import './style.css';
   async function loadEntry(word) {
     const w = word.trim().toLowerCase();
     if (!w) return;
-
-    if (ctrl) ctrl.abort();                // 取消上一条未完成的请求
+  
+    if (ctrl) ctrl.abort();
     ctrl = new AbortController();
-
+  
     setStatus('正在查询…', 'info');
-
-    if (cache.has(w)) {                    // 1. 先读内存
+  
+    if (cache.has(w)) {
       renderEntry(cache.get(w));
       setStatus('');
       return;
     }
-
-    try {                                  // 2. 网络
-      const res = await fetch(`/dictionary/${encodeURIComponent(w)}.json`, {
+  
+    try {
+      // 关键改动：请求新的 Worker API
+      const res = await fetch(`/api/dict/${encodeURIComponent(w)}`, {
         signal: ctrl.signal,
       });
-      if (!res.ok) throw new Error('404');
+  
+      if (!res.ok) {
+          // 如果 API 返回 404 或其他错误，直接抛出
+          throw new Error(`HTTP error! status: ${res.status}`);
+      }
+  
       const data = await res.json();
       cache.set(w, data);
       renderEntry(data);
       setStatus('');
+  
     } catch (err) {
       if (err.name === 'AbortError') return; // 用户快速删除→取消，不提示
       entryView.innerHTML = '<p class="error-feedback-box">抱歉，此单词尚未收录。</p>';

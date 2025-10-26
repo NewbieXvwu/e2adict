@@ -5,9 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   publicDir: 'public',
   plugins: [
-    viteStaticCopy({
-      targets: [{ src: 'dictionary', dest: '.' }]
-    }),
+    // viteStaticCopy({targets: [{ src: 'dictionary', dest: '.' }]}),
 
     VitePWA({
       registerType: 'autoUpdate',
