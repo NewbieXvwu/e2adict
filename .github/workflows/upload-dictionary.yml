@@ -1,0 +1,41 @@
+name: Upload Dictionary to Cloudflare KV
+
+# 控制 workflow 的触发时机
+on:
+  # 允许你从 GitHub Actions 页面手动触发此 workflow
+  workflow_dispatch:
+
+  # (可选) 当 dictionary 目录有 push 时自动触发
+  # push:
+  #   paths:
+  #     - 'dictionary/**'
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest # 使用 Linux 环境，完美解决 Windows 文件名问题
+
+    steps:
+      # 第 1 步：检出你的代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第 2 步：设置 Node.js 环境
+      # 请根据你的项目选择合适的 Node.js 版本
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' 
+          cache: 'pnpm' # 为 pnpm 启用缓存
+
+      # 第 3 步：安装依赖
+      - name: Install dependencies
+        run: pnpm install
+
+      # 第 4 步：运行上传脚本
+      # 这里我们将 GitHub Secrets 作为环境变量传递给脚本
+      - name: Run upload script
+        run: node scripts/upload-to-kv.js
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
