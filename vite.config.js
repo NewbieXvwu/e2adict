@@ -13,10 +13,28 @@ export default defineConfig({
       },
 
       runtimeCaching: [
+        // 缓存从 KV 获取的单词释义 (您自己的 API)
         {
-          // 匹配来自 api.dictionaryapi.dev 的所有请求（包括 API 和 音频）
+          // 匹配所有以 /api/dict/ 开头的同源请求
+          urlPattern: new RegExp('^/api/dict/'),
+          // 使用 "Stale-While-Revalidate" 策略
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'kv-definitions-cache',
+            expiration: {
+              maxEntries: 1000, // 最多缓存 1000 个单词
+              maxAgeSeconds: 30 * 24 * 60 * 60, // 缓存 30 天
+            },
+            // 只缓存成功的响应
+            cacheableResponse: {
+              statuses: [200],
+            },
+          },
+        },
+
+        // 永久缓存来自 dictionaryapi.dev 的音标和音频
+        {
           urlPattern: /^https?:\/\/api\.dictionaryapi\.dev\/.*/,
-          // 优先从缓存读取，如果缓存中没有，则请求网络并存入缓存
           handler: 'CacheFirst',
           options: {
             cacheName: 'dictionary-api-cache',
