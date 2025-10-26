@@ -1,12 +1,9 @@
 import { defineConfig } from 'vite';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   publicDir: 'public',
   plugins: [
-    // viteStaticCopy({targets: [{ src: 'dictionary', dest: '.' }]}),
-
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: { enabled: true },
@@ -17,16 +14,17 @@ export default defineConfig({
 
       runtimeCaching: [
         {
-          urlPattern: /^https?:\/.*\/dictionary\/.*\.json$/,
-          handler: 'StaleWhileRevalidate',
+          // 匹配来自 api.dictionaryapi.dev 的所有请求（包括 API 和 音频）
+          urlPattern: /^https?:\/\/api\.dictionaryapi\.dev\/.*/,
+          // 优先从缓存读取，如果缓存中没有，则请求网络并存入缓存
+          handler: 'CacheFirst',
           options: {
-            cacheName: 'dict-swr',
-            plugins: [
-              { cacheableResponse: { statuses: [200] } },
-              { expiration: { maxEntries: 1000, maxAgeSeconds: 30 * 24 * 60 * 60 } }
-            ]
-          }
-        }
+            cacheName: 'dictionary-api-cache',
+            cacheableResponse: {
+              statuses: [200],
+            },
+          },
+        },
       ],
 
       manifest: {

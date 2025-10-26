@@ -47,13 +47,13 @@
   }
 }
 
-/* 4. 新增：自定义组件样式 */
+/* 4. 自定义组件样式 */
 @layer components {
   .audio-button {
     @apply inline-flex h-8 w-8 items-center justify-center rounded-full;
     @apply transition-colors duration-200;
   }
-  .audio-button:hover {
+  .audio-button:hover:not([data-state]) {
     background-color: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
   }
   .audio-button:focus-visible {
@@ -63,16 +63,16 @@
   /* 控制按钮内 SVG 图标的颜色 */
   .audio-button svg {
     @apply h-5 w-5; /* 设置一个统一的大小 */
-    fill: var(--color-on-surface-variant); /* 使用 CSS 变量控制颜色 */
-    transition: fill 0.2s;
+    color: var(--color-on-surface-variant); /* 默认图标颜色 */
+    transition: color 0.2s;
   }
-  .audio-button:hover svg {
-    fill: var(--color-on-surface);
+  .audio-button:hover:not([data-state]) svg {
+    color: var(--color-on-surface);
   }
 
-  /* 加载状态下的动画样式 */
-  .audio-button[data-state="loading"] svg {
-    /* 深色模式下的加载动画颜色 */
-    fill: var(--color-on-background);
+  /* 状态图标的颜色 */
+  .audio-button[data-state="networking"] svg,
+  .audio-button[data-state="playing"] svg {
+    color: var(--color-on-background);
   }
 }
