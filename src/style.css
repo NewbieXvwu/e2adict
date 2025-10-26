@@ -18,7 +18,7 @@
   --color-background: #111315;
   --color-on-background: #e2e2e6;
   --color-error: #f2b8b5;
-  --font-sans: 'Noto Sans SC', sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
 }
 @media (prefers-color-scheme: light) {
   :root {
@@ -44,5 +44,35 @@
     @apply rounded-2xl border text-sm text-error px-4 py-6;
     background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
     border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+  }
+}
+
+/* 4. 新增：自定义组件样式 */
+@layer components {
+  .audio-button {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-full;
+    @apply transition-colors duration-200;
+  }
+  .audio-button:hover {
+    background-color: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+  }
+  .audio-button:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+  
+  /* 控制按钮内 SVG 图标的颜色 */
+  .audio-button svg {
+    @apply h-5 w-5; /* 设置一个统一的大小 */
+    fill: var(--color-on-surface-variant); /* 使用 CSS 变量控制颜色 */
+    transition: fill 0.2s;
+  }
+  .audio-button:hover svg {
+    fill: var(--color-on-surface);
+  }
+
+  /* 加载状态下的动画样式 */
+  .audio-button[data-state="loading"] svg {
+    /* 深色模式下的加载动画颜色 */
+    fill: var(--color-on-background);
   }
 }
