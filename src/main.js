@@ -2,6 +2,38 @@
 import './style.css';
 
 (() => {
+  const previewParams = (() => {
+    // 获取当前页面 URL 的查询参数
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('eo_token');
+    const time = params.get('eo_time');
+
+    // 如果存在预览所需的 token 和 time 参数
+    if (token && time) {
+      console.log('EdgeOne preview mode detected. Patching fetch requests.');
+      // 返回一个包含这些参数的查询字符串，供后续使用
+      return `?eo_token=${token}&eo_time=${time}`;
+    }
+    return ''; // 如果不是预览环境，则返回空字符串
+  })();
+
+  if (previewParams) {
+    // 替换全局的 fetch 函数
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      let resource = input;
+      // 检查请求是否是站内相对路径或同源 URL
+      if (typeof resource === 'string' && (resource.startsWith('/') || resource.startsWith(window.location.origin))) {
+          // 如果是，则将预览参数附加到 URL 后面
+          const url = new URL(resource, window.location.origin);
+          url.search += (url.search ? '&' : '') + previewParams.substring(1);
+          resource = url.toString();
+      }
+      // 使用修改后的 URL 调用原始的 fetch 函数
+      return originalFetch.call(this, resource, init);
+    };
+  }
+
   /* ---------- DOM ---------- */
   const searchInput  = document.getElementById('searchInput');
   const statusMsg    = document.getElementById('statusMessage');
