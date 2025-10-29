@@ -1,5 +1,5 @@
 # 工作流名称
-name: Upload Dictionary to Claw Cloud Object Storage
+name: Sync Dictionary to Claw Cloud Object Storage
 
 # 触发工作流的事件
 on:
@@ -17,17 +17,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 第二步：配置 S3 兼容的凭证
-      # 使用官方的 aws-actions/configure-aws-credentials 来安全地设置环境变量
-      - name: Configure AWS Credentials for Claw Cloud
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.CLAW_CLOUD_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.CLAW_CLOUD_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1 # 必须设置一个区域，即使它不直接用于非AWS服务
-
-      # 第三步：使用 aws-cli 将文件同步到对象存储
+      # 第二步：使用 aws-cli 同步文件，并通过 env 设置凭证
       - name: Sync dictionary folder to Claw Cloud
+        env:
+          # 将 Secrets 设置为 aws-cli 所需的环境变量
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLAW_CLOUD_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLAW_CLOUD_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-central-1
         run: |
           aws s3 sync ./dictionary s3://${{ secrets.CLAW_CLOUD_BUCKET_NAME }}/ \
             --endpoint-url https://objectstorageapi.eu-central-1.clawcloudrun.com \
