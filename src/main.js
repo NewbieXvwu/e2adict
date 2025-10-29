@@ -39,6 +39,22 @@ import './style.css';
     return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   };
 
+  function getDictionaryUrl(word) {
+    const safeWord = encodeURIComponent(word.trim().toLowerCase());
+
+    const cloudflareHostnames = [
+      'e2adict.pages.dev'
+    ];
+
+    if (cloudflareHostnames.includes(window.location.hostname)) {
+      // 当前在 Cloudflare Pages 环境，使用 Pages Functions (KV)
+      return `/api/dict/${safeWord}`;
+    } else {
+      // 在其他环境 (如本地开发 localhost)，请求对象存储
+      return `https://objectstorageapi.eu-central-1.clawcloudrun.com/puhyby1u-e2cdict/${safeWord}.json`;
+    }
+  }
+
   /* ---------- 状态提示 ---------- */
   function setStatus(msg = '', tone = 'muted') {
     statusMsg.textContent = msg;
@@ -50,7 +66,8 @@ import './style.css';
     const w = word.trim().toLowerCase();
     if (!w || cache.has(w)) return;
     try {
-      const res = await fetch(`/api/dict/${encodeURIComponent(w)}`, { priority: 'low', signal: new AbortController().signal });
+      const url = getDictionaryUrl(w);
+      const res = await fetch(url, { priority: 'low', signal: new AbortController().signal });
       if (!res.ok) return;
       const data = await res.json();
       cache.set(w, data);
@@ -103,7 +120,8 @@ import './style.css';
       return;
     }
     try {
-      const definitionPromise = fetch(`/api/dict/${encodeURIComponent(w)}`, { signal: ctrl.signal });
+      const definitionUrl = getDictionaryUrl(w);
+      const definitionPromise = fetch(definitionUrl, { signal: ctrl.signal });
       const phoneticsPromise = fetchPhonetics(w, ctrl.signal);
       const definitionRes = await definitionPromise;
       if (!definitionRes.ok) throw new Error(`HTTP error! status: ${definitionRes.status}`);
