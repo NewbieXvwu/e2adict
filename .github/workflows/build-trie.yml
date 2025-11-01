@@ -5,9 +5,13 @@ on:
     branches:
       - main
     paths:
+      # 当词典内容或构建脚本变化时触发
       - 'dictionary/**'
       - 'scripts/build-trie.js'
+      - 'scripts/generate-ranked-words.py'
+      - '.github/workflows/build-and-commit.yml' # 工作流自身变化时也触发
   
+  # 允许手动触发
   workflow_dispatch:
 
 jobs:
@@ -18,24 +22,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          version: 10
+          python-version: '3.14'
+
+      - name: Install Python dependencies
+        run: pip install wordfreq
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'pnpm'
+      
+      - name: Generate ranked words list
+        run: python scripts/generate-ranked-words.py
 
-      - name: Generate trie.json
-        run: pnpm run build:trie
-
-      - name: Commit and push if trie.json changed
+      - name: Build trie.bin from ranked list
+        run: node scripts/build-trie.js
+        
+      - name: Commit and push if trie.bin changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: 'chore(build): Rebuild trie.bin'
+          commit_message: 'chore(build): Rebuild trie.bin with frequency ranking'
           file_pattern: public/trie.bin
           commit_user_name: 'github-actions[bot]'
           commit_user_email: 'github-actions[bot]@users.noreply.github.com'
