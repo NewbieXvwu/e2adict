@@ -1,3 +1,5 @@
+// vite.config.js
+
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -13,26 +15,37 @@ export default defineConfig({
       },
 
       runtimeCaching: [
-        // 缓存从 KV 获取的单词释义 (您自己的 API)
         {
-          // 匹配所有以 /api/dict/ 开头的同源请求
           urlPattern: new RegExp('^/api/dict/'),
-          // 使用 "Stale-While-Revalidate" 策略
           handler: 'StaleWhileRevalidate',
           options: {
-            cacheName: 'kv-definitions-cache',
+            // 统一缓存名称
+            cacheName: 'definitions-cache',
             expiration: {
-              maxEntries: 1000, // 最多缓存 1000 个单词
-              maxAgeSeconds: 30 * 24 * 60 * 60, // 缓存 30 天
+              maxEntries: 1000,
+              maxAgeSeconds: 30 * 24 * 60 * 60, // 30 天
             },
-            // 只缓存成功的响应
             cacheableResponse: {
               statuses: [200],
             },
           },
         },
 
-        // 永久缓存来自 dictionaryapi.dev 的音标和音频
+        {
+          urlPattern: new RegExp('^https?://objectstorageapi\\.eu-central-1\\.clawcloudrun\\.com/puhyby1u-e2cdict/'),
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'definitions-cache',
+            expiration: {
+              maxEntries: 1000,
+              maxAgeSeconds: 30 * 24 * 60 * 60, // 30 天
+            },
+            cacheableResponse: {
+              statuses: [200],
+            },
+          },
+        },
+
         {
           urlPattern: /^https?:\/\/api\.dictionaryapi\.dev\/.*/,
           handler: 'CacheFirst',
