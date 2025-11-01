@@ -35,7 +35,7 @@ jobs:
       - name: Commit and push if trie.json changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: 'chore(build): Rebuild trie.json'
-          file_pattern: public/trie.json
+          commit_message: 'chore(build): Rebuild trie.bin'
+          file_pattern: public/trie.bin
           commit_user_name: 'github-actions[bot]'
           commit_user_email: 'github-actions[bot]@users.noreply.github.com'
