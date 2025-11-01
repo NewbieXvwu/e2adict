@@ -60,19 +60,48 @@
     @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
   }
   
-  /* 控制按钮内 SVG 图标的颜色 */
   .audio-button svg {
-    @apply h-5 w-5; /* 设置一个统一的大小 */
-    color: var(--color-on-surface-variant); /* 默认图标颜色 */
+    @apply h-5 w-5;
+    color: var(--color-on-surface-variant);
     transition: color 0.2s;
   }
   .audio-button:hover:not([data-state]) svg {
     color: var(--color-on-surface);
   }
 
-  /* 状态图标的颜色 */
   .audio-button[data-state="networking"] svg,
   .audio-button[data-state="playing"] svg {
     color: var(--color-on-background);
   }
+}
+
+/* 5. 新增：建议列表和涟漪效果样式 */
+@layer components {
+  .suggestion-list {
+    will-change: transform, opacity;
+    transition: transform 200ms cubic-bezier(0.05, 0.7, 0.1, 1.0), 
+                opacity 200ms cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  }
+
+  .ripple {
+    @apply absolute rounded-full pointer-events-none;
+    background-color: hsla(from var(--color-on-surface) h s l / 0.3);
+    transform: scale(0);
+    animation: ripple-animation 450ms ease-out;
+  }
+
+  @keyframes ripple-animation {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+}
+
+/* 6. 滚动条样式 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+  background-color: var(--color-outline); 
+  @apply rounded;
 }
