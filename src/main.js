@@ -13,9 +13,7 @@ import * as shortcuts from './modules/shortcuts.js';
 import { debounce } from './modules/utils.js';
 
 // --- 预加载逻辑 ---
-// 创建一个防抖动版本的 prefetch 函数，延迟 150ms
 const debouncedPrefetch = debounce(prefetch, 150);
-
 
 // --- 主要查询逻辑 ---
 async function performSearch(word) {
@@ -28,7 +26,7 @@ async function performSearch(word) {
   
   try {
     const { definition, phoneticsPromise } = await fetchEntryData(w);
-    renderEntry(definition);
+    await renderEntry(definition); // 确保 await renderEntry
     setStatus('');
     const phonetics = await phoneticsPromise;
     if (phonetics) updatePhonetics(phonetics);
@@ -62,7 +60,6 @@ function setupEventListeners() {
     const value = searchInput.value.trim();
     suggestionController.update(value);
 
-    // 预加载逻辑：如果用户输入的是一个完整的有效单词，则预加载
     if (suggestionEngine.isWord(value)) {
       debouncedPrefetch(value);
     }
@@ -75,10 +72,8 @@ function setupEventListeners() {
   });
 
   searchInput.addEventListener('keydown', (e) => {
-    // 首先，让 suggestionController 处理按键，这会更新高亮项
     suggestionController.handleKeyDown(e);
     
-    // 预加载逻辑：如果用户按下了上下箭头，预加载新高亮的建议词
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       const activeWord = suggestionController.getActiveWord();
       if (activeWord) {
@@ -113,6 +108,21 @@ function setupEventListeners() {
 (async () => {
   setStatus('');
   setupEventListeners();
-  shortcuts.init(searchInput); // <-- 初始化全局快捷键
+  shortcuts.init(searchInput);
+  
+  // 初始化核心功能（Trie树）
   await suggestionEngine.init();
+
+  // 在浏览器空闲时预加载词形映射模块
+  const prefetchFormMappings = () => {
+    import('./modules/form-mappings.js')
+      .then(() => console.log('Form mappings module prefetched.'))
+      .catch(err => console.error('Failed to prefetch form mappings:', err));
+  };
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(prefetchFormMappings);
+  } else {
+    setTimeout(prefetchFormMappings, 1000);
+  }
 })();
