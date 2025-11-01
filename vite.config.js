@@ -1,5 +1,3 @@
-// vite.config.js
-
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -15,11 +13,11 @@ export default defineConfig({
       },
 
       runtimeCaching: [
+        // 规则 1: 缓存来自 Cloudflare KV 的单词释义 (同源 API)
         {
           urlPattern: new RegExp('^/api/dict/'),
           handler: 'StaleWhileRevalidate',
           options: {
-            // 统一缓存名称
             cacheName: 'definitions-cache',
             expiration: {
               maxEntries: 1000,
@@ -31,6 +29,7 @@ export default defineConfig({
           },
         },
 
+        // 规则 2: 缓存来自对象存储的单词释义 (跨域 API)
         {
           urlPattern: new RegExp('^https?://objectstorageapi\\.eu-central-1\\.clawcloudrun\\.com/puhyby1u-e2cdict/'),
           handler: 'StaleWhileRevalidate',
@@ -46,11 +45,27 @@ export default defineConfig({
           },
         },
 
+        // 规则 3: 永久缓存来自 dictionaryapi.dev 的音标和音频
         {
           urlPattern: /^https?:\/\/api\.dictionaryapi\.dev\/.*/,
           handler: 'CacheFirst',
           options: {
             cacheName: 'dictionary-api-cache',
+            cacheableResponse: {
+              statuses: [200],
+            },
+          },
+        },
+
+        // 新增规则 4: 缓存 Trie 数据文件
+        {
+          urlPattern: /\/trie\.json$/,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'trie-data-cache',
+            expiration: {
+              maxEntries: 1, // 只有一个文件
+            },
             cacheableResponse: {
               statuses: [200],
             },
