@@ -60,24 +60,42 @@
     <main class="flex flex-col gap-6">
       <section class="rounded-3xl bg-surface-container p-6 shadow-soft" aria-labelledby="search-heading">
         <h2 id="search-heading" class="sr-only">搜索单词</h2>
-        <form id="searchForm" class="space-y-4">
-          <div class="relative">
-            <label for="searchInput"
-              class="absolute -top-2 left-3 bg-surface-container px-1 text-xs font-medium uppercase tracking-wider text-on-surface-variant">
+        
+        <form id="searchForm">
+          <div class="relative" id="search-component-wrapper">
+            <label for="searchInput" class="absolute -top-2 left-3 z-10 bg-surface-container px-1 text-xs font-medium uppercase tracking-wider text-on-surface-variant">
               搜索单词
             </label>
             <input
               id="searchInput"
               type="search"
-              name="word"
               placeholder="例如：ability"
               autocomplete="off"
               minlength="1"
               enterkeyhint="search"
-              class="w-full rounded-lg border-2 border-transparent bg-surface-container-high px-4 py-3 text-lg text-on-surface outline-none transition-colors duration-200 focus:border-primary focus:bg-surface-container-highest"
+              class="relative w-full rounded-lg border-2 border-transparent bg-surface-container-high px-4 py-3 pr-14 text-lg text-on-surface outline-none transition-colors duration-200 focus:border-primary focus:bg-surface-container-highest"
+              aria-controls="suggestion-list"
+              aria-autocomplete="list"
             />
+            <button 
+              type="submit" 
+              aria-label="搜索"
+              id="searchButton"
+              class="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-on-surface-variant transition-colors duration-200 hover:bg-surface-container-highest hover:text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-high overflow-hidden"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+                <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+              </svg>
+            </button>
+            
+            <div id="suggestion-list" 
+                 class="suggestion-list invisible absolute top-full z-20 mt-2 w-full origin-top transform-gpu overflow-hidden rounded-2xl bg-surface-container-high shadow-xl opacity-0 scale-95"
+                 role="listbox"
+            >
+            </div>
           </div>
         </form>
+
         <div id="statusMessage" class="mt-4 text-sm text-on-surface-variant" role="status" aria-live="polite"></div>
       </section>
 
