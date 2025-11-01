@@ -8,19 +8,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 第 1 步：检出你的代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 第 2 步 (关键改动)：先安装 pnpm
-      # 这样后续的步骤才能找到并使用 pnpm 命令
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8 # 建议使用最新的 v8 或 v9
+          version: 10
 
-      # 第 3 步：再设置 Node.js 环境
-      # 此时，setup-node 已经可以找到 pnpm 来正确设置缓存了
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
