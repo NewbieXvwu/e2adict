@@ -1,9 +1,13 @@
 /* ---------- DOM 元素 ---------- */
-export const searchInput  = document.getElementById('searchInput');
+// 现有元素
 export const statusMsg    = document.getElementById('statusMessage');
 export const entryView    = document.getElementById('entryView');
-export const searchForm   = document.getElementById('searchForm');
 export const entryTmpl    = document.getElementById('entryTemplate');
+export const searchForm = document.getElementById('searchForm');
+export const searchInput = document.getElementById('searchInput');
+export const searchButton = document.getElementById('searchButton');
+export const suggestionList = document.getElementById('suggestion-list');
+export const searchComponentWrapper = document.getElementById('search-component-wrapper');
 
 /* ---------- UI 常量 ---------- */
 const formTranslations = {
