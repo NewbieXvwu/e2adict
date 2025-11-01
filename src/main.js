@@ -1,29 +1,13 @@
 import './style.css';
 import { 
   searchForm, searchInput, searchButton, suggestionList, searchComponentWrapper,
-  entryView, setStatus, renderEntry, updatePhonetics 
+  entryView, setStatus, renderEntry, updatePhonetics, createRipple
 } from './modules/ui.js';
 import { fetchEntryData } from './modules/api.js';
 import { handleAudioPlay } from './modules/audio.js';
 import * as suggestionEngine from './modules/suggestionEngine.js';
 import * as suggestionController from './modules/suggestionController.js';
-
-// --- 涟漪效果 ---
-function createRipple(event) {
-  const button = event.currentTarget;
-  const circle = document.createElement("span");
-  const diameter = Math.max(button.clientWidth, button.clientHeight);
-  const radius = diameter / 2;
-  circle.style.width = circle.style.height = `${diameter}px`;
-  const rect = button.getBoundingClientRect();
-  circle.style.left = `${event.clientX - rect.left - radius}px`;
-  circle.style.top = `${event.clientY - rect.top - radius}px`;
-  circle.classList.add("ripple");
-  const existingRipple = button.querySelector(".ripple");
-  if (existingRipple) existingRipple.remove();
-  button.appendChild(circle);
-  circle.addEventListener('animationend', () => circle.remove());
-}
+import * as shortcuts from './modules/shortcuts.js';
 
 // --- 主要查询逻辑 ---
 async function performSearch(word) {
@@ -53,7 +37,15 @@ function setupEventListeners() {
   searchForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const activeWord = suggestionController.getActiveWord();
-    performSearch(activeWord || searchInput.value);
+    const wordToSearch = activeWord || searchInput.value;
+
+    if (activeWord) {
+      searchInput.value = activeWord;
+    }
+    
+    if (wordToSearch) {
+      performSearch(wordToSearch);
+    }
   });
 
   searchButton.addEventListener("mousedown", createRipple);
@@ -85,19 +77,12 @@ function setupEventListeners() {
     const audioButton = e.target.closest('[data-action="play-audio"]');
     if (audioButton) handleAudioPlay(audioButton);
   });
-
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      searchInput.focus();
-      searchInput.select();
-    }
-  });
 }
 
 // --- 初始化 ---
 (async () => {
   setStatus('');
   setupEventListeners();
+  shortcuts.init(searchInput); // <-- 初始化全局快捷键
   await suggestionEngine.init();
 })();
