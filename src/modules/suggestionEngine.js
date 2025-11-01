@@ -81,3 +81,48 @@ export function getSuggestions(prefix, limit = 7) {
 
   return suggestions;
 }
+
+/**
+ * 检查一个单词是否存在于 Trie 树中。
+ * @param {string} word 要检查的单词。
+ * @returns {boolean} 如果单词存在则返回 true，否则返回 false。
+ */
+export function isWord(word) {
+  if (!trieData || !word) return false;
+
+  const lowerWord = word.toLowerCase();
+  let currentNodeIndex = 0;
+
+  // 遍历单词的每个字符，在 Trie 树中导航
+  for (const char of lowerWord) {
+    const charCode = charToCode(char);
+    const packedNode = trieData[currentNodeIndex];
+    
+    const childCount = packedNode >>> 26;
+    if (childCount === 0) return false; // 没有子节点，路径中断
+
+    const firstChildIndex = packedNode & 0xFFFFF;
+    let found = false;
+
+    // 线性扫描子节点
+    for (let i = 0; i < childCount; i++) {
+      const childIndex = firstChildIndex + i;
+      const childPackedNode = trieData[childIndex];
+      const childCharCode = (childPackedNode >>> 20) & 0x1F;
+
+      if (childCharCode === charCode) {
+        currentNodeIndex = childIndex;
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) return false; // 未找到匹配的子节点
+  }
+
+  // 检查最终到达的节点是否标记为单词的结尾
+  const finalPackedNode = trieData[currentNodeIndex];
+  const isEndOfWord = (finalPackedNode >>> 25) & 1;
+  
+  return isEndOfWord === 1;
+}
