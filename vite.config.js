@@ -59,7 +59,7 @@ export default defineConfig({
 
         // 新增规则 4: 缓存 Trie 数据文件
         {
-          urlPattern: /\/trie\.json$/,
+          urlPattern: /\/trie\.bin$/,
           handler: 'CacheFirst',
           options: {
             cacheName: 'trie-data-cache',
@@ -90,3 +90,4 @@ export default defineConfig({
     })
   ],
 });
+
