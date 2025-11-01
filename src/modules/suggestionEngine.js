@@ -4,6 +4,7 @@ let trieData = null; // 将持有 Uint32Array 视图
 
 // --- 解码工具 ---
 const codeToChar = (code) => String.fromCharCode(code + 'a'.charCodeAt(0) - 1);
+const charToCode = (char) => char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
 
 // --- 公共 API ---
 
@@ -39,7 +40,7 @@ export function getSuggestions(prefix, limit = 7) {
 
   // 1. 导航到前缀的末尾节点
   for (const char of lowerPrefix) {
-    const charCode = char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+    const charCode = charToCode(char);
     const packedNode = trieData[currentNodeIndex];
     
     const childCount = packedNode >>> 28;
@@ -47,57 +48,62 @@ export function getSuggestions(prefix, limit = 7) {
     
     const firstChildIndex = packedNode & 0x3FFFFF;
 
-    // 二分查找在子节点中找到匹配的字符
+    // 使用绝对索引进行搜索，更稳健
+    let low = firstChildIndex;
+    let high = firstChildIndex + childCount - 1;
     let found = false;
-    let low = 0;
-    let high = childCount - 1;
-    let mid = 0;
 
-    while(low <= high) {
-        mid = Math.floor((low + high) / 2);
-        const childIndex = firstChildIndex + mid;
-        const childPackedNode = trieData[childIndex];
-        const childCharCode = (childPackedNode >>> 22) & 0x1F;
+    while (low <= high) {
+      const midIndex = Math.floor((low + high) / 2);
+      const midPackedNode = trieData[midIndex];
+      const midCharCode = (midPackedNode >>> 22) & 0x1F;
 
-        if (childCharCode === charCode) {
-            currentNodeIndex = childIndex;
-            found = true;
-            break;
-        } else if (childCharCode < charCode) {
-            low = mid + 1;
-        } else {
-            high = mid - 1;
-        }
+      if (midCharCode === charCode) {
+        currentNodeIndex = midIndex;
+        found = true;
+        break;
+      } else if (midCharCode < charCode) {
+        low = midIndex + 1;
+      } else {
+        high = midIndex - 1;
+      }
     }
     
     if (!found) return []; // 没找到匹配的字符
   }
 
-  // 2. 从该节点开始，使用深度优先搜索 (DFS) 收集所有单词
+  // 2. 从该节点开始，使用递归式深度优先搜索 (DFS) 收集所有单词
   const suggestions = [];
-  const stack = [{ index: currentNodeIndex, word: lowerPrefix }];
+  
+  /**
+   * --- 单词收集逻辑 (递归DFS) ---
+   * @param {number} nodeIndex - 当前节点的索引
+   * @param {string} currentWord - 从根到此节点形成的单词
+   */
+  function collectWords(nodeIndex, currentWord) {
+    if (suggestions.length >= limit) return;
 
-  while (stack.length > 0 && suggestions.length < limit) {
-    const { index, word } = stack.pop();
-    const packedNode = trieData[index];
-
-    const isEndOfWord = (packedNode >>> 27) & 1;
+    const packed = trieData[nodeIndex];
+    const isEndOfWord = (packed >>> 27) & 1;
+    
     if (isEndOfWord) {
-      suggestions.push(word);
+      suggestions.push(currentWord);
     }
+    
+    const childCount = packed >>> 28;
+    if (childCount === 0) return;
 
-    const childCount = packedNode >>> 28;
-    const firstChildIndex = packedNode & 0x3FFFFF;
-
-    // 将子节点逆序压入栈，以保证输出是字典序
-    for (let i = childCount - 1; i >= 0; i--) {
+    const firstChildIndex = packed & 0x3FFFFF;
+    for (let i = 0; i < childCount; i++) {
+      if (suggestions.length >= limit) return; // 每次循环前都检查
       const childIndex = firstChildIndex + i;
-      const childPackedNode = trieData[childIndex];
-      const childCharCode = (childPackedNode >>> 22) & 0x1F;
-      const newWord = word + codeToChar(childCharCode);
-      stack.push({ index: childIndex, word: newWord });
+      const childPacked = trieData[childIndex];
+      const charCode = (childPacked >>> 22) & 0x1F;
+      collectWords(childIndex, currentWord + codeToChar(charCode));
     }
   }
+
+  collectWords(currentNodeIndex, lowerPrefix);
 
   return suggestions;
 }
