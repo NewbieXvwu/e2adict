@@ -28,6 +28,26 @@ const escapeHtml = (v) => {
   return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 };
 
+/**
+ * 在按钮上创建 MD3 风格的涟漪效果。
+ * @param {MouseEvent} event - mousedown 事件对象。
+ */
+export function createRipple(event) {
+  const button = event.currentTarget;
+  const circle = document.createElement("span");
+  const diameter = Math.max(button.clientWidth, button.clientHeight);
+  const radius = diameter / 2;
+  circle.style.width = circle.style.height = `${diameter}px`;
+  const rect = button.getBoundingClientRect();
+  circle.style.left = `${event.clientX - rect.left - radius}px`;
+  circle.style.top = `${event.clientY - rect.top - radius}px`;
+  circle.classList.add("ripple");
+  const existingRipple = button.querySelector(".ripple");
+  if (existingRipple) existingRipple.remove();
+  button.appendChild(circle);
+  circle.addEventListener('animationend', () => circle.remove());
+}
+
 /* ---------- UI 更新函数 ---------- */
 export function setStatus(msg = '', tone = 'muted') {
   statusMsg.textContent = msg;
@@ -99,3 +119,4 @@ export function renderEntry(entry) {
   entryView.innerHTML = '';
   entryView.appendChild(frag);
 }
+
