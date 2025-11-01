@@ -24,38 +24,31 @@ export function getSuggestions(prefix, limit = 7) {
   if (!trieData || !prefix) return [];
 
   const lowerPrefix = prefix.toLowerCase();
-  let currentNodeIndex = 0; 
+  let currentNodeIndex = 0;
 
   for (const char of lowerPrefix) {
     const charCode = charToCode(char);
     const packedNode = trieData[currentNodeIndex];
     
     const childCount = packedNode >>> 26;
-    if (childCount === 0) return [];
-    
-    const firstChildIndex = packedNode & 0xFFFFF; // 掩码 0xFFFFF 是 20 个 1
+    if (childCount === 0) return []; // 没有子节点，无法继续匹配
 
-    let low = firstChildIndex;
-    let high = firstChildIndex + childCount - 1;
+    const firstChildIndex = packedNode & 0xFFFFF;
     let found = false;
 
-    while (low <= high) {
-      const midIndex = Math.floor((low + high) / 2);
-      const midPackedNode = trieData[midIndex];
-      const midCharCode = (midPackedNode >>> 20) & 0x1F; // 掩码 0x1F 是 5 个 1
+    for (let i = 0; i < childCount; i++) {
+      const childIndex = firstChildIndex + i;
+      const childPackedNode = trieData[childIndex];
+      const childCharCode = (childPackedNode >>> 20) & 0x1F;
 
-      if (midCharCode === charCode) {
-        currentNodeIndex = midIndex;
+      if (childCharCode === charCode) {
+        currentNodeIndex = childIndex;
         found = true;
-        break;
-      } else if (midCharCode < charCode) {
-        low = midIndex + 1;
-      } else {
-        high = midIndex - 1;
+        break; // 找到匹配的字符，跳出内层循环
       }
     }
     
-    if (!found) return [];
+    if (!found) return []; // 如果在子节点中找不到当前字符，说明没有匹配项
   }
 
   const suggestions = [];
@@ -73,6 +66,7 @@ export function getSuggestions(prefix, limit = 7) {
     const childCount = packed >>> 26;
     if (childCount === 0) return;
 
+    // 因为子节点在构建时已按频率排序，所以直接遍历就是高频优先
     const firstChildIndex = packed & 0xFFFFF;
     for (let i = 0; i < childCount; i++) {
       if (suggestions.length >= limit) return;
