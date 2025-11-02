@@ -28,57 +28,57 @@ export function getSuggestions(prefix, limit = 7) {
 
   let currentNodeIndex = 0;
 
+  // 1. 找到前缀对应的节点
   for (const char of lowerPrefix) {
     const charCode = charToCode(char);
     const packedNode = trieData[currentNodeIndex];
-    
     const childCount = packedNode >>> 26;
     if (childCount === 0) return [];
-
     const firstChildIndex = packedNode & 0xFFFFF;
     let found = false;
-
     for (let i = 0; i < childCount; i++) {
       const childIndex = firstChildIndex + i;
       const childPackedNode = trieData[childIndex];
       const childCharCode = (childPackedNode >>> 20) & 0x1F;
-
       if (childCharCode === charCode) {
         currentNodeIndex = childIndex;
         found = true;
         break;
       }
     }
-    
     if (!found) return [];
   }
 
+  // 2. 从该节点开始，使用 BFS 收集建议
   const suggestions = [];
-  
-  function collectWords(nodeIndex, currentWord) {
-    if (suggestions.length >= limit) return;
+  const queue = [{ nodeIndex: currentNodeIndex, word: lowerPrefix }];
 
+  while (queue.length > 0) {
+    const { nodeIndex, word } = queue.shift(); // 从队列头部取出
+
+    // 检查当前节点是否代表一个完整的单词
     const packed = trieData[nodeIndex];
     const isEndOfWord = (packed >>> 25) & 1;
-    
     if (isEndOfWord) {
-      suggestions.push(currentWord);
+      suggestions.push(word);
+      if (suggestions.length >= limit) {
+        return suggestions; // 找到足够多的建议，立即返回
+      }
     }
-    
+
+    // 将所有子节点加入队列尾部
     const childCount = packed >>> 26;
-    if (childCount === 0) return;
+    if (childCount === 0) continue;
 
     const firstChildIndex = packed & 0xFFFFF;
     for (let i = 0; i < childCount; i++) {
-      if (suggestions.length >= limit) return;
       const childIndex = firstChildIndex + i;
       const childPacked = trieData[childIndex];
       const charCode = (childPacked >>> 20) & 0x1F;
-      collectWords(childIndex, currentWord + codeToChar(charCode));
+      const nextWord = word + codeToChar(charCode);
+      queue.push({ nodeIndex: childIndex, word: nextWord });
     }
   }
-
-  collectWords(currentNodeIndex, lowerPrefix);
 
   return suggestions;
 }
