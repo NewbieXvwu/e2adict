@@ -1,3 +1,5 @@
+// src/modules/audio.js
+
 import { SPEAKER_ICON_SVG, NETWORKING_ICON_SVG, PLAYING_ICON_SVG } from './ui.js';
 
 export function handleAudioPlay(buttonEl) {
@@ -21,9 +23,28 @@ export function handleAudioPlay(buttonEl) {
   };
 
   const onEnded = () => resetState();
+  
   const onError = (err) => {
     console.error("Audio playback failed:", err);
-    resetState();
+    
+    const article = buttonEl.closest('article');
+    const wordToSpeak = article?.querySelector('[data-field="word"]')?.textContent;
+
+    if (wordToSpeak && 'speechSynthesis' in window) {
+      console.warn('Audio source failed. Falling back to Web Speech API.');
+      const utterance = new SpeechSynthesisUtterance(wordToSpeak);
+      utterance.lang = 'en-US';
+      
+      utterance.onend = resetState;
+      utterance.onerror = (event) => {
+        console.error('Web Speech API failed:', event.error);
+        resetState();
+      };
+      
+      speechSynthesis.speak(utterance);
+    } else {
+      resetState();
+    }
   };
 
   buttonEl.dataset.state = 'networking';
