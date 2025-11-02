@@ -26,15 +26,25 @@ async function performSearch(word) {
   
   try {
     const { definition, phoneticsPromise } = await fetchEntryData(w);
-    await renderEntry(definition); // 确保 await renderEntry
+    renderEntry(definition); // renderEntry 现在是同步的
     setStatus('');
     const phonetics = await phoneticsPromise;
     if (phonetics) updatePhonetics(phonetics);
   } catch (err) {
     if (err.name === 'AbortError') return;
     console.error('Search failed:', err);
-    entryView.innerHTML = '<p class="error-feedback-box">抱歉，此单词尚未收录。</p>';
-    setStatus('抱歉，此单词尚未收录。', 'error');
+
+    let message = '抱歉，此单词尚未收录。';
+    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+      message = '网络请求失败。请检查您的网络连接或稍后再试。';
+    } else if (err.message.includes('status: 404')) {
+      message = '抱歉，此单词尚未收录。';
+    } else if (err.message.match(/status: 5\d{2}/)) {
+      message = '服务器出现临时问题，请稍后再试。';
+    }
+    
+    entryView.innerHTML = `<p class="error-feedback-box">${message}</p>`;
+    setStatus(message, 'error');
   }
 }
 
@@ -56,7 +66,9 @@ function setupEventListeners() {
 
   searchButton.addEventListener("mousedown", createRipple);
 
-  searchInput.addEventListener('input', () => {
+  // [改动] 增加 e.isComposing 判断，优化输入法体验
+  searchInput.addEventListener('input', (e) => {
+    if (e.isComposing) return;
     const value = searchInput.value.trim();
     suggestionController.update(value);
 
@@ -110,8 +122,15 @@ function setupEventListeners() {
   setupEventListeners();
   shortcuts.init(searchInput);
   
+  searchInput.setAttribute('aria-expanded', 'false');
+
   // 初始化核心功能（Trie树）
-  await suggestionEngine.init();
+  try {
+    await suggestionEngine.init();
+  } catch (error) {
+    // 降级提示：如果 Trie 树加载失败
+    setStatus('建议功能加载失败，可离线使用其余功能。', 'error');
+  }
 
   // 在浏览器空闲时预加载词形映射模块
   const prefetchFormMappings = () => {

@@ -1,3 +1,5 @@
+// vite.config.js
+
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -9,7 +11,7 @@ export default defineConfig({
       devOptions: { enabled: true },
 
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,bin}'],
       },
 
       runtimeCaching: [
@@ -58,6 +60,7 @@ export default defineConfig({
         },
 
         // 新增规则 4: 缓存 Trie 数据文件
+        // [说明] 此规则仍然有用，作为对已缓存文件的更新策略
         {
           urlPattern: /\/trie\.bin$/,
           handler: 'CacheFirst',
@@ -90,4 +93,3 @@ export default defineConfig({
     })
   ],
 });
-

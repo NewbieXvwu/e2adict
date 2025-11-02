@@ -1,4 +1,39 @@
-const cache = new Map();
+// src/modules/api.js
+
+class LRUCache {
+  constructor(maxSize = 1000) {
+    this.maxSize = maxSize;
+    this.cache = new Map();
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) {
+      return undefined;
+    }
+    const value = this.cache.get(key);
+    // 移动到最近使用的位置
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+
+  set(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxSize) {
+      // 删除最久未使用的项
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, value);
+  }
+
+  has(key) {
+    return this.cache.has(key);
+  }
+}
+
+const cache = new LRUCache(200);
 let currentController;
 
 function getDictionaryUrl(word) {
@@ -32,7 +67,7 @@ export async function prefetch(word) {
   if (!w || cache.has(w)) return;
   try {
     const url = getDictionaryUrl(w);
-    const res = await fetch(url, { priority: 'low', signal: new AbortController().signal });
+    const res = await fetch(url, { priority: 'low' });
     if (!res.ok) return;
     const data = await res.json();
     cache.set(w, data);
@@ -49,7 +84,6 @@ export async function fetchEntryData(word) {
 
   if (cache.has(w)) {
     const definition = cache.get(w);
-    // 即使有缓存，也异步获取音标
     const phoneticsPromise = fetchPhonetics(w, signal);
     return { definition, phoneticsPromise };
   }
@@ -62,8 +96,13 @@ export async function fetchEntryData(word) {
 
   const phoneticsPromise = fetchPhonetics(w, signal);
 
-  const definition = await definitionPromise;
-  cache.set(w, definition);
-
-  return { definition, phoneticsPromise };
+  try {
+    const definition = await definitionPromise;
+    cache.set(w, definition);
+    return { definition, phoneticsPromise };
+  } catch (err) {
+    // 确保在请求失败后，下一次请求可以正常进行
+    currentController = null;
+    throw err;
+  }
 }

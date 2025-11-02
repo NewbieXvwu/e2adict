@@ -1,6 +1,6 @@
 // src/modules/suggestionEngine.js
 
-let trieData = null; // 将持有 Uint32Array 视图
+let trieData = null;
 
 const codeToChar = (code) => String.fromCharCode(code + 'a'.charCodeAt(0) - 1);
 const charToCode = (char) => char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
@@ -17,13 +17,15 @@ export async function init() {
     console.log(`Binary Trie loaded successfully with ${trieData.length} nodes.`);
   } catch (error) {
     console.error('Could not initialize suggestion engine:', error);
+    // 抛出错误以便上层捕获并给出用户提示
+    throw error;
   }
 }
 
 export function getSuggestions(prefix, limit = 7) {
-  if (!trieData || !prefix) return [];
+  const lowerPrefix = prefix.toLowerCase().replace(/[^a-z]/g, '');
+  if (!trieData || !lowerPrefix) return [];
 
-  const lowerPrefix = prefix.toLowerCase();
   let currentNodeIndex = 0;
 
   for (const char of lowerPrefix) {
@@ -31,7 +33,7 @@ export function getSuggestions(prefix, limit = 7) {
     const packedNode = trieData[currentNodeIndex];
     
     const childCount = packedNode >>> 26;
-    if (childCount === 0) return []; // 没有子节点，无法继续匹配
+    if (childCount === 0) return [];
 
     const firstChildIndex = packedNode & 0xFFFFF;
     let found = false;
@@ -44,11 +46,11 @@ export function getSuggestions(prefix, limit = 7) {
       if (childCharCode === charCode) {
         currentNodeIndex = childIndex;
         found = true;
-        break; // 找到匹配的字符，跳出内层循环
+        break;
       }
     }
     
-    if (!found) return []; // 如果在子节点中找不到当前字符，说明没有匹配项
+    if (!found) return [];
   }
 
   const suggestions = [];
@@ -66,7 +68,6 @@ export function getSuggestions(prefix, limit = 7) {
     const childCount = packed >>> 26;
     if (childCount === 0) return;
 
-    // 因为子节点在构建时已按频率排序，所以直接遍历就是高频优先
     const firstChildIndex = packed & 0xFFFFF;
     for (let i = 0; i < childCount; i++) {
       if (suggestions.length >= limit) return;
@@ -82,29 +83,22 @@ export function getSuggestions(prefix, limit = 7) {
   return suggestions;
 }
 
-/**
- * 检查一个单词是否存在于 Trie 树中。
- * @param {string} word 要检查的单词。
- * @returns {boolean} 如果单词存在则返回 true，否则返回 false。
- */
 export function isWord(word) {
-  if (!trieData || !word) return false;
+  const lowerWord = (word || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (!trieData || !lowerWord) return false;
 
-  const lowerWord = word.toLowerCase();
   let currentNodeIndex = 0;
 
-  // 遍历单词的每个字符，在 Trie 树中导航
   for (const char of lowerWord) {
     const charCode = charToCode(char);
     const packedNode = trieData[currentNodeIndex];
     
     const childCount = packedNode >>> 26;
-    if (childCount === 0) return false; // 没有子节点，路径中断
+    if (childCount === 0) return false;
 
     const firstChildIndex = packedNode & 0xFFFFF;
     let found = false;
 
-    // 线性扫描子节点
     for (let i = 0; i < childCount; i++) {
       const childIndex = firstChildIndex + i;
       const childPackedNode = trieData[childIndex];
@@ -117,10 +111,9 @@ export function isWord(word) {
       }
     }
     
-    if (!found) return false; // 未找到匹配的子节点
+    if (!found) return false;
   }
 
-  // 检查最终到达的节点是否标记为单词的结尾
   const finalPackedNode = trieData[currentNodeIndex];
   const isEndOfWord = (finalPackedNode >>> 25) & 1;
   

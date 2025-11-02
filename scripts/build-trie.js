@@ -1,6 +1,5 @@
 // scripts/build-trie.js
 import fs from 'fs';
-import path from 'path';
 
 console.log('Starting Binary Trie build process with frequency ranking...');
 
@@ -44,7 +43,7 @@ function buildInMemoryTrie(words, rankMap) {
 
 /**
  * 将内存中的 Trie 树“压平”成一个节点数组。
- * 关键：在这一步，同级子节点会根据 bestRank 进行排序。
+ * 在这一步，同级子节点会根据 bestRank 进行排序。
  * @param {object} root - Trie 树的根节点。
  * @returns {Array<object>} - 扁平化的节点数组。
  */
@@ -69,8 +68,10 @@ function flattenTrie(root) {
       return nodeA.bestRank - nodeB.bestRank;
     });
 
-    flatNodes[parentIndex].childCount = sortedChildrenChars.length;
-    flatNodes[parentIndex].firstChildIndex = flatNodes.length;
+    if (sortedChildrenChars.length > 0) {
+      flatNodes[parentIndex].childCount = sortedChildrenChars.length;
+      flatNodes[parentIndex].firstChildIndex = flatNodes.length;
+    }
     
     for (const childChar of sortedChildrenChars) {
       const childNode = node.children[childChar];

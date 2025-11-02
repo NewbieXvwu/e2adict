@@ -11,6 +11,7 @@ function _show() {
   if (isVisible || suggestionList.querySelector('li') === null) return;
   suggestionList.classList.remove('opacity-0', 'scale-95', 'invisible');
   suggestionList.classList.add('opacity-100', 'scale-100');
+  searchInput.setAttribute('aria-expanded', 'true');
   isVisible = true;
 }
 
@@ -57,14 +58,17 @@ export function hide() {
   if (!isVisible) return;
   suggestionList.classList.remove('opacity-100', 'scale-100');
   suggestionList.classList.add('opacity-0', 'scale-95');
+  
   const onTransitionEnd = () => {
     if (!isVisible) suggestionList.classList.add('invisible');
-    suggestionList.removeEventListener('transitionend', onTransitionEnd);
   };
-  suggestionList.addEventListener('transitionend', onTransitionEnd);
+
+  suggestionList.addEventListener('transitionend', onTransitionEnd, { once: true });
+  
   activeIndex = -1;
   isVisible = false;
   searchInput.removeAttribute('aria-activedescendant');
+  searchInput.setAttribute('aria-expanded', 'false');
 }
 
 export function handleKeyDown(e) {

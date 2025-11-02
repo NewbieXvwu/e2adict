@@ -37,8 +37,7 @@ def main():
   try:
     sorted_words = sorted(
       list(dict_words),
-      key=lambda word: word_frequency(word, LANG),
-      reverse=True
+      key=lambda word: (-word_frequency(word, LANG), word)
     )
   except Exception as e:
     print(f"错误: 在排序过程中发生异常: {e}", file=sys.stderr)
