@@ -26,7 +26,7 @@ async function performSearch(word) {
   
   try {
     const { definition, phoneticsPromise } = await fetchEntryData(w);
-    renderEntry(definition); // renderEntry 现在是同步的
+    renderEntry(definition);
     setStatus('');
     const phonetics = await phoneticsPromise;
     if (phonetics) updatePhonetics(phonetics);
@@ -66,12 +66,19 @@ function setupEventListeners() {
 
   searchButton.addEventListener("mousedown", createRipple);
 
-  // [改动] 增加 e.isComposing 判断，优化输入法体验
   searchInput.addEventListener('input', (e) => {
     if (e.isComposing) return;
     const value = searchInput.value.trim();
     suggestionController.update(value);
 
+    if (suggestionEngine.isWord(value)) {
+      debouncedPrefetch(value);
+    }
+  });
+
+  searchInput.addEventListener('compositionend', (e) => {
+    const value = e.target.value.trim();
+    suggestionController.update(value);
     if (suggestionEngine.isWord(value)) {
       debouncedPrefetch(value);
     }
@@ -124,15 +131,12 @@ function setupEventListeners() {
   
   searchInput.setAttribute('aria-expanded', 'false');
 
-  // 初始化核心功能（Trie树）
   try {
     await suggestionEngine.init();
   } catch (error) {
-    // 降级提示：如果 Trie 树加载失败
     setStatus('建议功能加载失败，可离线使用其余功能。', 'error');
   }
 
-  // 在浏览器空闲时预加载词形映射模块
   const prefetchFormMappings = () => {
     import('./modules/form-mappings.js')
       .then(() => console.log('Form mappings module prefetched.'))
