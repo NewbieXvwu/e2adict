@@ -63,7 +63,11 @@ class PriorityQueue {
 }
 
 
-// --- Helper Functions ---
+// --- Constants & Helper Functions ---
+const MAX_BEST_RANK = 65535;
+const FUZZY_PENALTY = 100000;
+const MAX_DISTANCE = 2;
+
 const codeToChar = (code) => String.fromCharCode(code + 'a'.charCodeAt(0) - 1);
 const charToCode = (char) => char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
 
@@ -82,9 +86,14 @@ function decodeVarInt(buffer, offset) {
 }
 
 function getBestRank(nodeIndex) {
-    if (!pointerMap || nodeIndex >= pointerMap.length) return 65535;
+    if (!pointerMap || nodeIndex >= pointerMap.length) return MAX_BEST_RANK;
     const offset = pointerMap[nodeIndex];
     return decodeVarInt(compressedRanks, offset);
+}
+
+function getPackedNode(index) {
+    if (index < 0 || index >= trieStructure.length) return 0;
+    return trieStructure[index];
 }
 
 // --- Core Initialization ---
@@ -118,106 +127,143 @@ export async function init() {
 }
 
 // --- Search Algorithms ---
+function searchTrie(inputWord, limit, { isFuzzy = false, signal }) {
+    if (!trieStructure || !inputWord) return [];
 
-function getPrefixNode(prefix) {
-    let currentNodeIndex = 0;
-    for (const char of prefix) {
-        const charCode = charToCode(char);
-        const packed = trieStructure[currentNodeIndex];
-        const childCount = (packed >>> 20) & 0x3F;
-        if (childCount === 0) return -1; // Not found
+    const results = new Map();
+    const pq = new PriorityQueue();
+    const visited = new Set(); // To avoid redundant computations
+    const inputLength = inputWord.length;
 
-        const firstChildIndex = packed & 0xFFFFF;
-        let found = false;
-        for (let i = 0; i < childCount; i++) {
-            const childIndex = firstChildIndex + i;
-            const childPacked = trieStructure[childIndex];
-            const childCharCode = childPacked >>> 27;
-            if (childCharCode === charCode) {
-                currentNodeIndex = childIndex;
-                found = true;
-                break;
+    // State: [nodeIndex, inputIdx, word, distance]
+    const initialState = { index: 0, inputIdx: 0, word: '', distance: 0 };
+    pq.insert(initialState, getBestRank(0));
+
+    let visitedCount = 0;
+    const MAX_VISITS = isFuzzy ? 3000 : 1000;
+
+    while (!pq.isEmpty() && results.size < limit && visitedCount < MAX_VISITS) {
+        if (signal?.aborted) throw new DOMException('Search aborted', 'AbortError');
+
+        const state = pq.extractMin();
+        visitedCount++;
+        
+        const { index, inputIdx, word, distance } = state;
+
+        const stateKey = `${index},${inputIdx},${distance}`;
+        if (visited.has(stateKey)) continue;
+        visited.add(stateKey);
+        
+        const packed = getPackedNode(index);
+        const isEndOfWord = (packed >>> 26) & 1;
+
+        if (isEndOfWord && (inputIdx === inputLength || (isFuzzy && Math.abs(word.length - inputLength) <= distance))) {
+            if (!results.has(word)) {
+                results.set(word, distance);
             }
         }
-        if (!found) return -1;
-    }
-    return currentNodeIndex;
-}
-
-function getPrefixSuggestions(prefix, limit) {
-    if (!trieStructure) return [];
-    
-    const suggestions = [];
-    const pq = new PriorityQueue();
-    const startNodeIndex = getPrefixNode(prefix);
-
-    if (startNodeIndex === -1) return [];
-
-    const initialState = { index: startNodeIndex, word: prefix };
-    pq.insert(initialState, getBestRank(startNodeIndex));
-    
-    let visitedCount = 0;
-    const MAX_VISITS = 2000; // Budget
-
-    while (!pq.isEmpty() && suggestions.length < limit && visitedCount < MAX_VISITS) {
-        const { index, word } = pq.extractMin();
-        visitedCount++;
-
-        const packed = trieStructure[index];
-        const isEndOfWord = (packed >>> 26) & 1;
         
-        if (isEndOfWord) {
-            suggestions.push(word);
-        }
+        if (distance >= MAX_DISTANCE && isFuzzy) continue;
+        if (!isFuzzy && inputIdx > inputLength) continue;
 
         const childCount = (packed >>> 20) & 0x3F;
+        const nextInputChar = inputWord[inputIdx];
+        
+        // --- Prefix Search Continuation ---
+        if (!isFuzzy && inputIdx === inputLength) {
+            if (childCount > 0) {
+                const firstChildIndex = packed & 0xFFFFF;
+                for (let i = 0; i < childCount; i++) {
+                    const childIndex = firstChildIndex + i;
+                    const childPacked = getPackedNode(childIndex);
+                    const charCode = childPacked >>> 27;
+                    const nextState = { index: childIndex, inputIdx: inputLength, word: word + codeToChar(charCode), distance: 0 };
+                    pq.insert(nextState, getBestRank(childIndex));
+                }
+            }
+        }
+
+        // --- Fuzzy & Prefix shared logic ---
         if (childCount > 0) {
             const firstChildIndex = packed & 0xFFFFF;
             for (let i = 0; i < childCount; i++) {
                 const childIndex = firstChildIndex + i;
-                const childPacked = trieStructure[childIndex];
-                const charCode = childPacked >>> 27;
+                const childPacked = getPackedNode(childIndex);
+                const childCharCode = childPacked >>> 27;
+                const childChar = codeToChar(childCharCode);
+
+                // 1. Match
+                if (inputIdx < inputLength && childCharCode === charToCode(nextInputChar)) {
+                    const nextState = { index: childIndex, inputIdx: inputIdx + 1, word: word + childChar, distance: distance };
+                    pq.insert(nextState, getBestRank(childIndex) + distance * FUZZY_PENALTY);
+                }
                 
-                const nextState = { index: childIndex, word: word + codeToChar(charCode) };
-                pq.insert(nextState, getBestRank(childIndex));
+                if (isFuzzy) {
+                    // 2. Substitution
+                    if (inputIdx < inputLength && childCharCode !== charToCode(nextInputChar)) {
+                        const nextState = { index: childIndex, inputIdx: inputIdx + 1, word: word + childChar, distance: distance + 1 };
+                        pq.insert(nextState, getBestRank(childIndex) + (distance + 1) * FUZZY_PENALTY);
+                    }
+                    // 3. Insertion
+                    const nextState = { index: childIndex, inputIdx: inputIdx, word: word + childChar, distance: distance + 1 };
+                    pq.insert(nextState, getBestRank(childIndex) + (distance + 1) * FUZZY_PENALTY);
+                }
             }
         }
-    }
-    return suggestions;
-}
 
-// Placeholder for fuzzy search
-function getFuzzySuggestions(prefix, limit, { signal }) {
-    // This is where we'll implement the fuzzy search logic in the next step.
-    // For now, it returns an empty array.
-    if (signal?.aborted) return [];
-    console.log("Fuzzy search would run for:", prefix);
-    return [];
+        // 4. Deletion
+        if (isFuzzy && inputIdx < inputLength) {
+            const nextState = { index: index, inputIdx: inputIdx + 1, word: word, distance: distance + 1 };
+            pq.insert(nextState, getBestRank(index) + (distance + 1) * FUZZY_PENALTY);
+        }
+    }
+    
+    // Sort fuzzy results by distance, then by best rank (implicitly handled by PQ)
+    if (isFuzzy) {
+        return Array.from(results.entries())
+            .sort(([, distA], [, distB]) => distA - distB)
+            .map(([word]) => word);
+    }
+
+    return Array.from(results.keys());
 }
 
 
 // --- Public API ---
+let currentController;
 
 export function getSuggestions(prefix, limit = 7) {
     const cleanPrefix = (prefix || '').toLowerCase().replace(/[^a-z]/g, '');
     if (!cleanPrefix) return { prefixResults: [], fuzzyPromise: Promise.resolve([]) };
 
-    // 1. Get prefix results immediately
-    const prefixResults = getPrefixSuggestions(cleanPrefix, limit);
+    if (currentController) {
+        currentController.abort();
+    }
+    currentController = new AbortController();
+    const signal = currentController.signal;
+
+    const prefixResults = searchTrie(cleanPrefix, limit, { isFuzzy: false });
     
-    // 2. If prefix results are enough, don't start fuzzy search
     if (prefixResults.length >= limit) {
         return { prefixResults, fuzzyPromise: Promise.resolve([]) };
     }
     
-    // 3. Prepare for fuzzy search
-    const remainingLimit = limit - prefixResults.length;
-    const fuzzyPromise = new Promise((resolve) => {
-        // Run in next event loop tick to not block UI
+    const remainingLimit = limit;
+    const fuzzyPromise = new Promise((resolve, reject) => {
         setTimeout(() => {
-            const fuzzyResults = getFuzzySuggestions(cleanPrefix, remainingLimit, {});
-            resolve(fuzzyResults);
-        }, 0);
+            try {
+                if (signal.aborted) return resolve([]);
+                const fuzzyResults = searchTrie(cleanPrefix, remainingLimit, { isFuzzy: true, signal });
+                const uniqueFuzzy = fuzzyResults.filter(word => !prefixResults.includes(word));
+                resolve(uniqueFuzzy);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    resolve([]);
+                } else {
+                    reject(error);
+                }
+            }
+        }, 50); // Small delay to allow UI to render first
     });
 
     return { prefixResults, fuzzyPromise };
@@ -227,10 +273,29 @@ export function isWord(word) {
     const lowerWord = (word || '').toLowerCase().replace(/[^a-z]/g, '');
     if (!trieStructure || !lowerWord) return false;
     
-    const nodeIndex = getPrefixNode(lowerWord);
-    if (nodeIndex === -1) return false;
+    let currentNodeIndex = 0;
+    for (const char of lowerWord) {
+        const charCode = charToCode(char);
+        const packed = getPackedNode(currentNodeIndex);
+        const childCount = (packed >>> 20) & 0x3F;
+        if (childCount === 0) return false;
 
-    const finalPackedNode = trieStructure[nodeIndex];
+        const firstChildIndex = packed & 0xFFFFF;
+        let found = false;
+        for (let i = 0; i < childCount; i++) {
+            const childIndex = firstChildIndex + i;
+            const childPacked = getPackedNode(childIndex);
+            const childCharCode = childPacked >>> 27;
+            if (childCharCode === charCode) {
+                currentNodeIndex = childIndex;
+                found = true;
+                break;
+            }
+        }
+        if (!found) return false;
+    }
+
+    const finalPackedNode = getPackedNode(currentNodeIndex);
     const isEndOfWord = (finalPackedNode >>> 26) & 1;
     
     return isEndOfWord === 1;

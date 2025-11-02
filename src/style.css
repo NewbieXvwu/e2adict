@@ -1,3 +1,5 @@
+/* src/style.css */
+
 /* 1. Tailwind 注入 */
 @tailwind base;
 @tailwind components;
@@ -104,4 +106,16 @@
 ::-webkit-scrollbar-thumb { 
   background-color: var(--color-outline); 
   @apply rounded;
+}
+
+/* 7. 模糊搜索图标样式 */
+@layer components {
+  .fuzzy-suggestion-icon {
+    color: var(--color-on-surface-variant); 
+    opacity: 0.6;
+    width: 1.1em;
+    height: 1.1em;
+    margin-left: 0.75rem;
+    flex-shrink: 0;
+  }
 }

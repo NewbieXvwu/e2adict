@@ -1,6 +1,6 @@
 // src/modules/suggestionController.js
 
-import { searchInput, suggestionList } from './ui.js';
+import { searchInput, suggestionList, MAGIC_WAND_SVG } from './ui.js';
 import * as suggestionEngine from './suggestionEngine.js';
 
 let activeIndex = -1;
@@ -39,15 +39,23 @@ function _renderSuggestions({ prefixResults = [], fuzzyResults = [] }) {
         hide();
         return;
     }
-
+    
     const prefixHtml = prefixResults.map((word, index) => `
         <li id="suggestion-${index}" role="option" class="flex items-center justify-between px-4 py-2 text-on-surface rounded-lg cursor-pointer transition-colors duration-150" data-word="${word}">
             <span><strong>${word.substring(0, currentPrefix.length)}</strong>${word.substring(currentPrefix.length)}</span>
         </li>
     `).join('');
     
-    // Fuzzy results will be rendered here later
-    const fuzzyHtml = ''; 
+    const fuzzyOffset = prefixResults.length;
+    const fuzzyHtml = fuzzyResults.map((word, index) => {
+        let highlightedWord = `<span>${word}</span>`;
+        return `
+            <li id="suggestion-${fuzzyOffset + index}" role="option" class="flex items-center justify-between px-4 py-2 text-on-surface rounded-lg cursor-pointer transition-colors duration-150" data-word="${word}">
+                ${highlightedWord}
+                ${MAGIC_WAND_SVG}
+            </li>
+        `;
+    }).join('');
 
     suggestionList.innerHTML = `<ul class="max-h-[40vh] overflow-y-auto p-2">${prefixHtml}${fuzzyHtml}</ul>`;
     
@@ -58,16 +66,25 @@ function _renderSuggestions({ prefixResults = [], fuzzyResults = [] }) {
 
 // --- Public API ---
 export async function update(input) {
-    currentPrefix = input;
-    const { prefixResults, fuzzyPromise } = suggestionEngine.getSuggestions(input);
+    currentPrefix = input.trim().toLowerCase();
     
-    // 1. Render prefix results immediately
+    const { prefixResults, fuzzyPromise } = suggestionEngine.getSuggestions(currentPrefix);
+    
     _renderSuggestions({ prefixResults });
 
-    // 2. Wait for fuzzy results and re-render if input hasn't changed
-    const fuzzyResults = await fuzzyPromise;
-    if (searchInput.value.trim() === currentPrefix && fuzzyResults.length > 0) {
-        _renderSuggestions({ prefixResults, fuzzyResults });
+    try {
+        const fuzzyResults = await fuzzyPromise;
+        if (searchInput.value.trim().toLowerCase() === currentPrefix && (fuzzyResults.length > 0 || prefixResults.length > 0)) {
+            _renderSuggestions({ prefixResults, fuzzyResults });
+        } else if (searchInput.value.trim().toLowerCase() !== currentPrefix) {
+            // Input changed while waiting, do nothing
+        } else {
+             _renderSuggestions({ prefixResults: [], fuzzyResults: [] });
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error("Fuzzy search failed unexpectedly:", error);
+        }
     }
 }
 
