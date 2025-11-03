@@ -9,7 +9,7 @@ import { fetchEntryData, prefetch } from './modules/api.js';
 import { handleAudioPlay } from './modules/audio.js';
 import * as suggestionEngine from './modules/suggestionEngine.js';
 import * as suggestionController from './modules/suggestionController.js';
-import *s shortcuts from './modules/shortcuts.js';
+import * as shortcuts from './modules/shortcuts.js';
 import { debounce } from './modules/utils.js';
 
 const debouncedPrefetch = debounce(prefetch, 150);
