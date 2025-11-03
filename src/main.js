@@ -9,7 +9,7 @@ import { fetchEntryData, prefetch } from './modules/api.js';
 import { handleAudioPlay } from './modules/audio.js';
 import * as suggestionEngine from './modules/suggestionEngine.js';
 import * as suggestionController from './modules/suggestionController.js';
-import * as shortcuts from './modules/shortcuts.js';
+import *s shortcuts from './modules/shortcuts.js';
 import { debounce } from './modules/utils.js';
 
 const debouncedPrefetch = debounce(prefetch, 150);
@@ -19,13 +19,12 @@ async function performSearch(word) {
   if (!w) return;
   
   suggestionController.hide();
-  setStatus('正在查询…', 'info');
+  setStatus(''); // Clear status on new search
   entryView.innerHTML = '';
   
   try {
     const { definition, phoneticsPromise } = await fetchEntryData(w);
     renderEntry(definition);
-    setStatus('');
     const phonetics = await phoneticsPromise;
     if (phonetics) updatePhonetics(phonetics);
   } catch (err) {
@@ -57,10 +56,12 @@ function setupEventListeners() {
   searchButton.addEventListener("mousedown", createRipple);
 
   const handleInput = (e) => {
-    const value = e.target.value.trim();
+    const value = e.target.value; // Don't trim here, let controller handle it
     suggestionController.update(value);
-    if (suggestionEngine.isWord(value)) {
-      debouncedPrefetch(value);
+    
+    // Prefetch only when it's likely a complete word
+    if (suggestionEngine.isWord(value.trim())) {
+      debouncedPrefetch(value.trim());
     }
   };
 
@@ -68,7 +69,6 @@ function setupEventListeners() {
     if (e.isComposing) return;
     handleInput(e);
   });
-
   searchInput.addEventListener('compositionend', handleInput);
 
   searchInput.addEventListener('focus', () => {
@@ -109,16 +109,14 @@ function setupEventListeners() {
 
 // --- Initialization ---
 (async () => {
-  setStatus('正在初始化词典...', 'info');
   setupEventListeners();
   shortcuts.init(searchInput);
   searchInput.setAttribute('aria-expanded', 'false');
 
   try {
     await suggestionEngine.init();
-    setStatus('');
   } catch (error) {
-    setStatus('建议功能加载失败，可离线使用其余功能。', 'error');
+    setStatus('搜索建议功能可能无法使用。请尝试刷新页面。', 'error');
   }
 
   // Prefetch other modules
