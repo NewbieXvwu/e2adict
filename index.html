@@ -40,9 +40,45 @@
   <link rel="apple-touch-icon" href="/pwa-192x192.png">
   <link rel="manifest" href="/manifest.webmanifest">
 
-  <script type="module" src="/src/main.js" defer></script>
+  <script>
+    (function() {
+      window.umamiTrackerLoaded = false;
 
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="0ee3d288-15df-4d42-a3fb-5c9ce649f942"></script>
+      function createTrackerScript(src) {
+        if (window.umamiTrackerLoaded) return; // 如果已加载，则不再创建
+
+        var script = document.createElement('script');
+        script.async = true;
+        script.defer = true;
+        script.setAttribute('data-website-id', '0ee3d288-15df-4d42-a3fb-5c9ce649f942');
+        script.src = src;
+
+        // 成功加载时的回调
+        script.onload = function() {
+          console.log('Umami tracker loaded successfully from:', src);
+          window.umamiTrackerLoaded = true;
+        };
+        
+        // 如果第一个脚本加载失败（被拦截），则触发 onerror
+        script.onerror = function() {
+          console.warn('Official Umami tracker was blocked. Attempting to load from fallback...');
+          // 调用备用加载函数，并且只尝试一次
+          if (src.startsWith('https://')) {
+            createTrackerScript('/umami.js'); // 从自己的域名加载
+          } else {
+            console.error('Fallback Umami tracker also failed to load.');
+          }
+        };
+        
+        document.head.appendChild(script);
+      }
+
+      // 启动加载流程，首先尝试官方 CDN
+      createTrackerScript('https://cloud.umami.is/script.js');
+    })();
+  </script>
+
+  <script type="module" src="/src/main.js" defer></script>
 </head>
 
 <body class="min-h-screen bg-background text-on-background font-sans">

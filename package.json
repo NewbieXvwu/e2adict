@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.19.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/download-tracker.mjs && vite build",
     "preview": "vite preview",
     "tailwind:init": "tailwindcss init -p",
     "build:trie": "node scripts/build-trie.js"
