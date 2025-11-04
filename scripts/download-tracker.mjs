@@ -4,7 +4,7 @@ import path from 'path';
 
 const OFFICIAL_URL = 'https://cloud.umami.is/script.js';
 const OUTPUT_DIR = 'public';
-const OUTPUT_FILENAME = 'umami.js';
+const OUTPUT_FILENAME = 'umamiTracker.js';
 const OUTPUT_PATH = path.join(OUTPUT_DIR, OUTPUT_FILENAME);
 
 async function downloadTracker() {
@@ -30,5 +30,6 @@ async function downloadTracker() {
     console.error('❌ Error downloading tracker:', error.message);
   }
 }
+
 
 downloadTracker();
