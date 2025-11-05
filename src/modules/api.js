@@ -1,7 +1,9 @@
 // src/modules/api.js
 
+const CACHE_MAX_SIZE = 200;
+
 class LRUCache {
-  constructor(maxSize = 1000) {
+  constructor(maxSize = CACHE_MAX_SIZE) {
     this.maxSize = maxSize;
     this.cache = new Map();
   }
@@ -11,7 +13,6 @@ class LRUCache {
       return undefined;
     }
     const value = this.cache.get(key);
-    // 移动到最近使用的位置
     this.cache.delete(key);
     this.cache.set(key, value);
     return value;
@@ -21,7 +22,6 @@ class LRUCache {
     if (this.cache.has(key)) {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {
-      // 删除最久未使用的项
       const oldestKey = this.cache.keys().next().value;
       this.cache.delete(oldestKey);
     }
@@ -33,7 +33,7 @@ class LRUCache {
   }
 }
 
-const cache = new LRUCache(200);
+const cache = new LRUCache();
 let currentController;
 
 function getDictionaryUrl(word) {
@@ -71,7 +71,11 @@ export async function prefetch(word) {
     if (!res.ok) return;
     const data = await res.json();
     cache.set(w, data);
-  } catch {}
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.warn(`Prefetch failed for "${w}":`, err.message);
+    }
+  }
 }
 
 export async function fetchEntryData(word) {
@@ -101,7 +105,6 @@ export async function fetchEntryData(word) {
     cache.set(w, definition);
     return { definition, phoneticsPromise };
   } catch (err) {
-    // 确保在请求失败后，下一次请求可以正常进行
     currentController = null;
     throw err;
   }
