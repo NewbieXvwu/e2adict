@@ -8,19 +8,6 @@ export default defineConfig({
   build: {
     target: 'es2020',
     minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'suggestion-engine': ['./src/modules/suggestionEngine.js'],
-          'ui-utils': [
-            './src/modules/ui.js',
-            './src/modules/form-mappings.js',
-            './src/modules/audio.js',
-            './src/modules/utils.js'
-          ],
-        },
-      },
-    },
   },
   plugins: [
     VitePWA({
@@ -40,7 +27,7 @@ export default defineConfig({
             cacheName: 'definitions-cache',
             expiration: {
               maxEntries: 1000,
-              maxAgeSeconds: 7 * 24 * 60 * 60, // 7 天
+              maxAgeSeconds: 30 * 24 * 60 * 60, // 30 天
             },
             cacheableResponse: {
               statuses: [200],
@@ -56,7 +43,7 @@ export default defineConfig({
             cacheName: 'definitions-cache',
             expiration: {
               maxEntries: 1000,
-              maxAgeSeconds: 7 * 24 * 60 * 60, // 7 天
+              maxAgeSeconds: 30 * 24 * 60 * 60, // 30 天
             },
             cacheableResponse: {
               statuses: [200],
@@ -70,10 +57,6 @@ export default defineConfig({
           handler: 'CacheFirst',
           options: {
             cacheName: 'dictionary-api-cache',
-            expiration: {
-              maxEntries: 500,
-              maxAgeSeconds: 90 * 24 * 60 * 60, // 90 天
-            },
             cacheableResponse: {
               statuses: [200],
             },
