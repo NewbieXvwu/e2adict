@@ -237,6 +237,8 @@ function getPrefixSuggestions(prefix, limit) {
 let fuzzyResults;
 let fuzzyWorstDistance = MAX_DISTANCE;
 let fuzzyLimit = DEFAULT_SUGGESTION_LIMIT;
+const MAX_MEMO_SIZE = 5000;
+
 function _findFuzzyMatches(nodeIndex, remainingChars, currentWord, distance, signal, memo) {
     if (signal?.aborted) throw new DOMException('Search aborted', 'AbortError');
     if (distance > MAX_DISTANCE) return;
@@ -244,17 +246,11 @@ function _findFuzzyMatches(nodeIndex, remainingChars, currentWord, distance, sig
 
     const memoKey = `${nodeIndex}:${remainingChars.length}:${distance}`;
     if (memo.has(memoKey)) return;
-    memo.set(memoKey, true);
+    if (memo.size < MAX_MEMO_SIZE) memo.set(memoKey, true);
     
     if (remainingChars.length === 0) {
         if ((getPackedNode(nodeIndex) >>> 26) & 1) {
-            const existing = fuzzyResults.get(currentWord);
-            if (!existing || existing.distance > distance || (existing.distance === distance && existing.rank > getBestRank(nodeIndex))) {
-                fuzzyResults.set(currentWord, { rank: getBestRank(nodeIndex), distance });
-                if (fuzzyResults.size >= fuzzyLimit) {
-                    fuzzyWorstDistance = Math.max(...Array.from(fuzzyResults.values(), value => value.distance));
-                }
-            }
+            updateFuzzyResults(currentWord, getBestRank(nodeIndex), distance);
         }
     }
 
@@ -283,6 +279,38 @@ function _findFuzzyMatches(nodeIndex, remainingChars, currentWord, distance, sig
             }
         }
         _findFuzzyMatches(childIndex, remainingChars, currentWord + childChar, distance + 1, signal, memo); // Insertion
+    }
+}
+
+function updateFuzzyResults(word, rank, distance) {
+    const existing = fuzzyResults.get(word);
+    if (!existing || existing.distance > distance || (existing.distance === distance && existing.rank > rank)) {
+        fuzzyResults.set(word, { rank, distance });
+        
+        if (fuzzyResults.size > fuzzyLimit) {
+            let worstWord = null;
+            let worstDist = -1;
+            let worstRank = -1;
+            for (const [w, v] of fuzzyResults.entries()) {
+                if (v.distance > worstDist || (v.distance === worstDist && v.rank > worstRank)) {
+                    worstDist = v.distance;
+                    worstRank = v.rank;
+                    worstWord = w;
+                }
+            }
+            if (worstWord) {
+                fuzzyResults.delete(worstWord);
+            }
+            if (fuzzyResults.size === 0) {
+                fuzzyWorstDistance = MAX_DISTANCE;
+            } else {
+                fuzzyWorstDistance = Math.max(...Array.from(fuzzyResults.values(), v => v.distance));
+            }
+        } else if (fuzzyResults.size === fuzzyLimit) {
+            fuzzyWorstDistance = Math.max(...Array.from(fuzzyResults.values(), v => v.distance));
+        } else {
+            fuzzyWorstDistance = Math.max(fuzzyWorstDistance, distance);
+        }
     }
 }
 

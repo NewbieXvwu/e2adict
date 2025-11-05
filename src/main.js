@@ -12,7 +12,13 @@ import * as suggestionController from './modules/suggestionController.js';
 import * as shortcuts from './modules/shortcuts.js';
 import { debounce } from './modules/utils.js';
 
-const debouncedPrefetch = debounce(prefetch, 150);
+const debouncedPrefetch = debounce((word) => {
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => prefetch(word));
+  } else {
+    setTimeout(() => prefetch(word), 0);
+  }
+}, 250);
 
 async function performSearch(word) {
   const w = word.trim();

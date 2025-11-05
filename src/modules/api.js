@@ -1,6 +1,15 @@
 // src/modules/api.js
 
-const CACHE_MAX_SIZE = 200;
+function getOptimalCacheSize() {
+  if (typeof navigator !== 'undefined' && 'deviceMemory' in navigator) {
+    const memoryGB = navigator.deviceMemory;
+    if (memoryGB >= 8) return 500;
+    if (memoryGB >= 4) return 300;
+  }
+  return 200;
+}
+
+const CACHE_MAX_SIZE = getOptimalCacheSize();
 
 class LRUCache {
   constructor(maxSize = CACHE_MAX_SIZE) {

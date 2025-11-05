@@ -35,29 +35,53 @@ function _updateActiveDescendant(event = null) {
 
 function _renderSuggestions({ prefixResults = [], fuzzyResults = [] }) {
     if (prefixResults.length === 0 && fuzzyResults.length === 0) {
-        suggestionList.innerHTML = '';
+        suggestionList.textContent = '';
         hide();
         return;
     }
     
-    const prefixHtml = prefixResults.map((word, index) => `
-        <li id="suggestion-${index}" role="option" class="flex items-center justify-between px-4 py-2 text-on-surface rounded-lg cursor-pointer transition-colors duration-150" data-word="${word}">
-            <span><strong>${word.substring(0, currentPrefix.length)}</strong>${word.substring(currentPrefix.length)}</span>
-        </li>
-    `).join('');
+    const ul = document.createElement('ul');
+    ul.className = 'max-h-[40vh] overflow-y-auto p-2';
+    
+    prefixResults.forEach((word, index) => {
+        const li = document.createElement('li');
+        li.id = `suggestion-${index}`;
+        li.setAttribute('role', 'option');
+        li.className = 'flex items-center justify-between px-4 py-2 text-on-surface rounded-lg cursor-pointer transition-colors duration-150';
+        li.dataset.word = word;
+        
+        const span = document.createElement('span');
+        const strongPart = document.createElement('strong');
+        strongPart.textContent = word.substring(0, currentPrefix.length);
+        span.appendChild(strongPart);
+        span.appendChild(document.createTextNode(word.substring(currentPrefix.length)));
+        li.appendChild(span);
+        
+        ul.appendChild(li);
+    });
     
     const fuzzyOffset = prefixResults.length;
-    const fuzzyHtml = fuzzyResults.map((word, index) => {
-        let highlightedWord = `<span>${word}</span>`;
-        return `
-            <li id="suggestion-${fuzzyOffset + index}" role="option" class="flex items-center justify-between px-4 py-2 text-on-surface rounded-lg cursor-pointer transition-colors duration-150" data-word="${word}">
-                ${highlightedWord}
-                ${MAGIC_WAND_SVG}
-            </li>
-        `;
-    }).join('');
-
-    suggestionList.innerHTML = `<ul class="max-h-[40vh] overflow-y-auto p-2">${prefixHtml}${fuzzyHtml}</ul>`;
+    fuzzyResults.forEach((word, index) => {
+        const li = document.createElement('li');
+        li.id = `suggestion-${fuzzyOffset + index}`;
+        li.setAttribute('role', 'option');
+        li.className = 'flex items-center justify-between px-4 py-2 text-on-surface rounded-lg cursor-pointer transition-colors duration-150';
+        li.dataset.word = word;
+        
+        const span = document.createElement('span');
+        span.textContent = word;
+        li.appendChild(span);
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = MAGIC_WAND_SVG;
+        const icon = tempDiv.firstElementChild;
+        if (icon) li.appendChild(icon);
+        
+        ul.appendChild(li);
+    });
+    
+    suggestionList.textContent = '';
+    suggestionList.appendChild(ul);
     
     _show();
     activeIndex = -1;
