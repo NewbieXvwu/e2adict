@@ -28,6 +28,7 @@ const MAX_PREFIX_CACHE_SIZE = 10000;
 const MAX_SUGGESTION_CACHE_SIZE = 2000;
 const MIN_SUGGESTION_LENGTH = 2;
 const DEFAULT_SUGGESTION_LIMIT = 7;
+const MAX_MEMO_SIZE = 5000; // [AI改进] 保留memo大小限制
 
 const codeToChar = (code) => String.fromCharCode(code + 'a'.charCodeAt(0) - 1);
 const charToCode = (char) => char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
@@ -71,7 +72,6 @@ export async function init() {
         offset += pointerMapLen;
         compressedRanks = new Uint8Array(buffer, offset);
         
-        // Pre-decode all ranks for O(1) access
         const totalNodes = pointerMap.length;
         bestRanks = new Uint16Array(totalNodes);
         const B = 128;
@@ -86,7 +86,6 @@ export async function init() {
             bestRanks[i] = res > MAX_BEST_RANK ? MAX_BEST_RANK : res;
         }
         
-        // Free memory from raw buffers once decoded
         compressedRanks = null;
         pointerMap = null;
         
@@ -237,6 +236,7 @@ function getPrefixSuggestions(prefix, limit) {
 let fuzzyResults;
 let fuzzyWorstDistance = MAX_DISTANCE;
 let fuzzyLimit = DEFAULT_SUGGESTION_LIMIT;
+
 function _findFuzzyMatches(nodeIndex, remainingChars, currentWord, distance, signal, memo) {
     if (signal?.aborted) throw new DOMException('Search aborted', 'AbortError');
     if (distance > MAX_DISTANCE) return;
@@ -244,7 +244,7 @@ function _findFuzzyMatches(nodeIndex, remainingChars, currentWord, distance, sig
 
     const memoKey = `${nodeIndex}:${remainingChars.length}:${distance}`;
     if (memo.has(memoKey)) return;
-    memo.set(memoKey, true);
+    if (memo.size < MAX_MEMO_SIZE) memo.set(memoKey, true);
     
     if (remainingChars.length === 0) {
         if ((getPackedNode(nodeIndex) >>> 26) & 1) {
@@ -305,9 +305,9 @@ export function getSuggestions(prefix, limit = DEFAULT_SUGGESTION_LIMIT) {
     const cleanPrefix = (prefix || '').toLowerCase().replace(/[^a-z]/g, '');
     if (!cleanPrefix || cleanPrefix.length < MIN_SUGGESTION_LENGTH) return { prefixResults: [], fuzzyPromise: Promise.resolve([]) };
 
-    if (currentController) currentController.abort();
-    currentController = new AbortController();
-    const signal = currentController.signal;
+    if (currentController && typeof currentController.abort === 'function') currentController.abort();
+    currentController = typeof AbortController === 'function' ? new AbortController() : null;
+    const signal = currentController ? currentController.signal : null;
 
     const prefixResults = getPrefixSuggestions(cleanPrefix, limit);
     

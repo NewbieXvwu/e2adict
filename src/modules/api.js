@@ -1,6 +1,31 @@
 // src/modules/api.js
 
-const CACHE_MAX_SIZE = 200;
+function getOptimalCacheSize() {
+  if (typeof navigator !== 'undefined') {
+    const memoryGB = Number.isFinite(navigator.deviceMemory) ? navigator.deviceMemory : null;
+    if (memoryGB) {
+      if (memoryGB >= 8) return 500;
+      if (memoryGB >= 4) return 300;
+    }
+
+    const cores = Number.isFinite(navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : null;
+    if (cores) {
+      if (cores >= 12) return 450;
+      if (cores >= 8) return 350;
+      if (cores >= 4) return 250;
+    }
+  }
+  return 200;
+}
+
+const CACHE_MAX_SIZE = getOptimalCacheSize();
+
+function createAbortController() {
+  if (typeof AbortController === 'function') {
+    return new AbortController();
+  }
+  return null;
+}
 
 class LRUCache {
   constructor(maxSize = CACHE_MAX_SIZE) {
@@ -40,7 +65,8 @@ function getDictionaryUrl(word) {
   const safeWord = encodeURIComponent(word.trim().toLowerCase());
   const cloudflareHostnames = ['e2adict.pages.dev'];
   
-  if (cloudflareHostnames.includes(window.location.hostname)) {
+  const hostname = typeof window !== 'undefined' && window.location ? window.location.hostname : '';
+  if (cloudflareHostnames.includes(hostname)) {
     return `/api/dict/${safeWord}`;
   } else {
     return `https://objectstorageapi.eu-central-1.clawcloudrun.com/puhyby1u-e2cdict/${safeWord}.json`;
@@ -49,7 +75,8 @@ function getDictionaryUrl(word) {
 
 async function fetchPhonetics(word, signal) {
   try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, { signal });
+    const fetchOptions = signal ? { signal } : {};
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, fetchOptions);
     if (!res.ok) return null;
     const data = await res.json();
     const phonetic = data[0]?.phonetics?.find(p => p.text && p.audio);
@@ -67,7 +94,11 @@ export async function prefetch(word) {
   if (!w || cache.has(w)) return;
   try {
     const url = getDictionaryUrl(w);
-    const res = await fetch(url, { priority: 'low' });
+    const fetchOptions = {};
+    if (typeof Request !== 'undefined' && Request.prototype && 'priority' in Request.prototype) {
+      fetchOptions.priority = 'low';
+    }
+    const res = await fetch(url, fetchOptions);
     if (!res.ok) return;
     const data = await res.json();
     cache.set(w, data);
@@ -82,9 +113,11 @@ export async function fetchEntryData(word) {
   const w = word.trim().toLowerCase();
   if (!w) throw new Error("Empty word");
 
-  if (currentController) currentController.abort();
-  currentController = new AbortController();
-  const signal = currentController.signal;
+  if (currentController && typeof currentController.abort === 'function') {
+    currentController.abort();
+  }
+  currentController = createAbortController();
+  const signal = currentController ? currentController.signal : null;
 
   if (cache.has(w)) {
     const definition = cache.get(w);
@@ -93,7 +126,8 @@ export async function fetchEntryData(word) {
   }
 
   const definitionUrl = getDictionaryUrl(w);
-  const definitionPromise = fetch(definitionUrl, { signal }).then(res => {
+  const fetchOptions = signal ? { signal } : {};
+  const definitionPromise = fetch(definitionUrl, fetchOptions).then(res => {
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     return res.json();
   });

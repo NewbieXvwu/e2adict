@@ -12,7 +12,15 @@ import * as suggestionController from './modules/suggestionController.js';
 import * as shortcuts from './modules/shortcuts.js';
 import { debounce } from './modules/utils.js';
 
-const debouncedPrefetch = debounce(prefetch, 150);
+const debouncedPrefetch = debounce((word) => {
+  const doPrefetch = () => prefetch(word);
+  
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(doPrefetch);
+  } else {
+    setTimeout(doPrefetch, 0);
+  }
+}, 250);
 
 async function performSearch(word) {
   const w = word.trim();
@@ -123,7 +131,7 @@ function setupEventListeners() {
   const prefetchFormMappings = () => {
     import('./modules/form-mappings.js').catch(err => console.error(err));
   };
-  if ('requestIdleCallback' in window) {
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(prefetchFormMappings);
   } else {
     setTimeout(prefetchFormMappings, 1000);
