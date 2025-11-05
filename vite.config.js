@@ -5,6 +5,25 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   publicDir: 'public',
+  build: {
+    target: 'es2020',
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('suggestionEngine')) {
+            return 'suggestion-engine';
+          }
+          if (id.includes('audio')) {
+            return 'audio';
+          }
+          return undefined;
+        },
+      },
+    },
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 600,
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -59,15 +78,14 @@ export default defineConfig({
           },
         },
 
-        // 新增规则 4: 缓存 Trie 数据文件
-        // [说明] 此规则仍然有用，作为对已缓存文件的更新策略
+        // 规则 4: 缓存 Trie 数据文件
         {
           urlPattern: /\/trie\.bin$/,
           handler: 'CacheFirst',
           options: {
             cacheName: 'trie-data-cache',
             expiration: {
-              maxEntries: 1, // 只有一个文件
+              maxEntries: 1,
             },
             cacheableResponse: {
               statuses: [200],
