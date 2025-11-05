@@ -8,21 +8,6 @@ export default defineConfig({
   build: {
     target: 'es2020',
     minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => {
-          if (id.includes('suggestionEngine')) {
-            return 'suggestion-engine';
-          }
-          if (id.includes('audio')) {
-            return 'audio';
-          }
-          return undefined;
-        },
-      },
-    },
-    reportCompressedSize: false,
-    chunkSizeWarningLimit: 600,
   },
   plugins: [
     VitePWA({
