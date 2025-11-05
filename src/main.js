@@ -13,10 +13,12 @@ import * as shortcuts from './modules/shortcuts.js';
 import { debounce } from './modules/utils.js';
 
 const debouncedPrefetch = debounce((word) => {
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(() => prefetch(word));
+  const doPrefetch = () => prefetch(word);
+  
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(doPrefetch);
   } else {
-    setTimeout(() => prefetch(word), 0);
+    setTimeout(doPrefetch, 0);
   }
 }, 250);
 
@@ -129,7 +131,7 @@ function setupEventListeners() {
   const prefetchFormMappings = () => {
     import('./modules/form-mappings.js').catch(err => console.error(err));
   };
-  if ('requestIdleCallback' in window) {
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(prefetchFormMappings);
   } else {
     setTimeout(prefetchFormMappings, 1000);

@@ -333,9 +333,9 @@ export function getSuggestions(prefix, limit = DEFAULT_SUGGESTION_LIMIT) {
     const cleanPrefix = (prefix || '').toLowerCase().replace(/[^a-z]/g, '');
     if (!cleanPrefix || cleanPrefix.length < MIN_SUGGESTION_LENGTH) return { prefixResults: [], fuzzyPromise: Promise.resolve([]) };
 
-    if (currentController) currentController.abort();
-    currentController = new AbortController();
-    const signal = currentController.signal;
+    if (currentController && typeof currentController.abort === 'function') currentController.abort();
+    currentController = typeof AbortController === 'function' ? new AbortController() : null;
+    const signal = currentController ? currentController.signal : null;
 
     const prefixResults = getPrefixSuggestions(cleanPrefix, limit);
     
