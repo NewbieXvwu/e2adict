@@ -3,6 +3,7 @@
 // --- Data Structures ---
 let trieStructure, pointerMap, compressedRanks, bestRanks;
 const prefixNodeCache = new Map();
+const prefixSuggestionCache = new Map();
 
 class PriorityQueue {
     constructor() { this._heap = []; }
@@ -24,6 +25,7 @@ const MAX_BEST_RANK = 65535;
 const MAX_DISTANCE = 2;
 const MAX_VISITED_NODES = 2000;
 const MAX_PREFIX_CACHE_SIZE = 10000;
+const MAX_SUGGESTION_CACHE_SIZE = 2000;
 const MIN_SUGGESTION_LENGTH = 2;
 const DEFAULT_SUGGESTION_LIMIT = 7;
 
@@ -34,6 +36,23 @@ const getPackedNode = (index) => trieStructure[index] || 0;
 function getBestRank(nodeIndex) {
     if (!bestRanks || nodeIndex >= bestRanks.length) return MAX_BEST_RANK;
     return bestRanks[nodeIndex];
+}
+
+function readPrefixSuggestionCache(key) {
+    if (!prefixSuggestionCache.has(key)) return null;
+    const cached = prefixSuggestionCache.get(key);
+    prefixSuggestionCache.delete(key);
+    prefixSuggestionCache.set(key, cached);
+    return cached.slice();
+}
+
+function writePrefixSuggestionCache(key, suggestions) {
+    if (!Array.isArray(suggestions)) return;
+    if (!prefixSuggestionCache.has(key) && prefixSuggestionCache.size >= MAX_SUGGESTION_CACHE_SIZE) {
+        const oldestKey = prefixSuggestionCache.keys().next().value;
+        prefixSuggestionCache.delete(oldestKey);
+    }
+    prefixSuggestionCache.set(key, suggestions.slice());
 }
 
 // --- Core Initialization ---
@@ -73,6 +92,7 @@ export async function init() {
         
         prefixNodeCache.clear();
         prefixNodeCache.set('', 0);
+        prefixSuggestionCache.clear();
 
         console.log(`Trie loaded. Nodes: ${trieStructure.length}`);
     } catch (error) {
@@ -143,8 +163,16 @@ function getPrefixNode(prefix) {
 
 function getPrefixSuggestions(prefix, limit) {
     if (!trieStructure) return [];
+    
+    const cacheKey = `${prefix}:${limit}`;
+    const cachedResult = readPrefixSuggestionCache(cacheKey);
+    if (cachedResult) return cachedResult;
+    
     const startNodeIndex = getPrefixNode(prefix);
-    if (startNodeIndex === -1) return [];
+    if (startNodeIndex === -1) {
+        writePrefixSuggestionCache(cacheKey, []);
+        return [];
+    }
 
     const suggestions = [];
     const pq = new PriorityQueue();
@@ -201,7 +229,9 @@ function getPrefixSuggestions(prefix, limit) {
         }
     }
 
-    return suggestions.map((entry) => entry.word);
+    const result = suggestions.map((entry) => entry.word);
+    writePrefixSuggestionCache(cacheKey, result);
+    return result;
 }
 
 let fuzzyResults;
@@ -283,12 +313,13 @@ export function getSuggestions(prefix, limit = DEFAULT_SUGGESTION_LIMIT) {
     
     if (prefixResults.length >= limit) return { prefixResults, fuzzyPromise: Promise.resolve([]) };
     
+    const prefixSet = new Set(prefixResults);
     const remainingLimit = limit - prefixResults.length;
     const fuzzyPromise = new Promise((resolve, reject) => {
         setTimeout(() => {
             try {
                 const results = getFuzzySuggestions(cleanPrefix, remainingLimit, { signal });
-                resolve(results.filter(word => !prefixResults.includes(word)));
+                resolve(results.filter(word => !prefixSet.has(word)));
             } catch (error) {
                 if (error.name === 'AbortError') resolve([]); 
                 else reject(error);
